@@ -60,9 +60,9 @@ const World = () => {
     <div className="container mx-auto px-4 py-8">
       <SEO
         title="World News"
-        description="International news and global affairs - latest updates from around the world on politics, economy, technology and more on mibDaily News."
+        description="International news and global affairs - latest updates from around the world on politics, economy, technology and more on Mibnews."
         url="/world"
-        keywords={['world news', 'international news', 'global affairs', 'foreign news', 'mibdaily']}
+        keywords={['world news', 'international news', 'global affairs', 'foreign news', 'mibnews']}
       />
       <h1 className="text-3xl font-bold mb-6">World News</h1>
 

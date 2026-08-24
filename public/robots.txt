@@ -21,4 +21,4 @@ Allow: /
 User-agent: facebookexternalhit
 Allow: /
 
-Sitemap: https://mibitnews.com/sitemap.xml
+Sitemap: http://mibnews.in/sitemap.xml

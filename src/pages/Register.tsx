@@ -100,7 +100,7 @@ const Register = () => {
       <SEO title="Register" noIndex />
       <div className="mb-8 text-center">
         <h1 className="text-3xl font-bold mb-1">Create Account</h1>
-        <p className="text-gray-600">Register to get started with MIIT News</p>
+        <p className="text-gray-600">Register to get started with Mibnews</p>
       </div>
       
       <Card className="max-w-md w-full mx-auto">

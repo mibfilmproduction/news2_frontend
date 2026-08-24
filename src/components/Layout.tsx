@@ -26,7 +26,7 @@ const Layout = () => {
               {/* <h3 className="text-lg font-bold mb-4"></h3> */}
               <img src={logo} alt="Logo" width={200} height={150} className='mx-auto' />
               <p className="text-gray-300 mt-4">
-                mibDaily News delivers the latest breaking news and top stories across politics, entertainment, sports, business, and more.
+                Mibnews delivers the latest breaking news and top stories across politics, entertainment, sports, business, and more.
               </p>
             </div>
 
@@ -64,7 +64,7 @@ const Layout = () => {
           </div>
 
           <div className="mt-8 pt-6 border-t border-gray-800 text-sm text-gray-400 text-center">
-            &copy; {new Date().getFullYear()} mibDaily News. All Rights Reserved.
+            &copy; {new Date().getFullYear()} Mibnews. All Rights Reserved.
           </div>
           
         </div>

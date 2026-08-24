@@ -164,9 +164,9 @@ const Videos = () => {
     <div className="container mx-auto px-4 py-8">
       <SEO
         title="Latest Videos"
-        description="Watch the latest news videos, breaking news coverage, interviews and exclusive video stories on mibDaily News."
+        description="Watch the latest news videos, breaking news coverage, interviews and exclusive video stories on Mibnews."
         url="/videos"
-        keywords={['news videos', 'latest videos', 'video news', 'watch news online', 'mibdaily']}
+        keywords={['news videos', 'latest videos', 'video news', 'watch news online', 'mibnews']}
       />
       {/* Top Advertisement Banner - Full Width */}
       {/* <div className="w-full bg-gray-100 p-4 text-center mb-6 rounded-md">

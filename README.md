@@ -1,8 +1,8 @@
-# MIIT News - Full Stack News Application
+# Mibnews - Full Stack News Application
 
 ## Project Overview
 
-MIIT News is a full-stack news application with a React frontend and Node.js/Express/MongoDB backend. The application features a modern UI, full authentication system, and comprehensive admin panel for managing news content.
+Mibnews is a full-stack news application with a React frontend and Node.js/Express/MongoDB backend. The application features a modern UI, full authentication system, and comprehensive admin panel for managing news content.
 
 ## Features
 
@@ -52,7 +52,7 @@ Follow these steps to set up the complete project:
 git clone <YOUR_GIT_URL>
 
 # Step 2: Navigate to the project directory
-cd miit_news
+cd mibnews
 
 # Step 3: Install frontend dependencies
 npm install
@@ -73,7 +73,7 @@ npm install
 # Step 3: Set up environment variables
 # Make sure the .env file contains the following variables:
 # PORT=5000
-# MONGO_URI=mongodb://localhost:27017/miit_news
+# MONGO_URI=mongodb://localhost:27017/mibnews
 # JWT_SECRET=your_jwt_secret_key
 # JWT_EXPIRE=30d
 
@@ -104,14 +104,15 @@ npm run dev
 ## Project Structure
 
 ```
-miit_news/
-├── src/               # Frontend source code
-│   ├── components/    # React components
-│   ├── hooks/         # Custom React hooks
-│   ├── lib/           # Utility functions and API services
-│   ├── pages/         # Page components
-│   └── App.tsx        # Main application component
-├── backend/           # Backend source code
+mibnews/
+├── news2_frontend/    # Frontend source code
+│   ├── src/           # Frontend source code
+│   │   ├── components/    # React components
+│   │   ├── hooks/         # Custom React hooks
+│   │   ├── lib/           # Utility functions and API services
+│   │   ├── pages/         # Page components
+│   │   └── App.tsx        # Main application component
+├── news2_backend/     # Backend source code
 │   ├── config/        # Configuration files
 │   ├── controllers/   # Route controllers
 │   ├── middleware/    # Express middleware

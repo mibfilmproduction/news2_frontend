@@ -209,9 +209,9 @@ const Contact = () => {
     <div className="container mx-auto px-4 py-8">
       <SEO
         title="Contact Us"
-        description="Contact mibDaily News - send us your news tips, feedback or questions. Our team is here to help you."
+        description="Contact Mibnews - send us your news tips, feedback or questions. Our team is here to help you."
         url="/contact"
-        keywords={['contact mibdaily', 'contact news', 'news tips', 'feedback', 'mibdaily']}
+        keywords={['contact mibnews', 'contact news', 'news tips', 'feedback', 'mibnews']}
       />
       <h1 className="text-3xl font-bold mb-6">Contact Us</h1>
       
@@ -326,11 +326,11 @@ const Contact = () => {
               <div>
                 <h3 className="font-medium">Email Us</h3>
                 <p className="text-gray-600">
-                  <a href="mailto:info@mibit.in" className="hover:text-primary transition-colors">
-                    info@mibit.in
+                  <a href="mailto:info@mibnews.in" className="hover:text-primary transition-colors">
+                    info@mibnews.in
                   </a><br />
-                  <a href="mailto:support@mibit.in" className="hover:text-primary transition-colors">
-                    support@mibit.in
+                  <a href="mailto:support@mibnews.in" className="hover:text-primary transition-colors">
+                    support@mibnews.in
                   </a>
                 </p>
               </div>

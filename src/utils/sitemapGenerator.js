@@ -1,5 +1,5 @@
 /**
- * Sitemap Generator for mibDaily News
+ * Sitemap Generator for Mibnews
  * 
  * This utility generates a sitemap.xml file to improve search engine indexing
  * and discoverability of the news website content.
@@ -11,8 +11,8 @@ const axios = require('axios');
 require('dotenv').config();
 
 // Base URL of the site
-const SITE_URL = process.env.SITE_URL || 'https://mibitnews.com';
-const API_URL = process.env.API_URL || 'http://localhost:5000/api';
+const SITE_URL = process.env.SITE_URL || 'http://mibnews.in';
+const API_URL = process.env.API_URL || 'http://localhost:5003/api';
 
 /**
  * Generate the XML sitemap
@@ -94,7 +94,7 @@ async function generateSitemap() {
     <priority>0.9</priority>
     <news:news>
       <news:publication>
-        <news:name>mibDaily News</news:name>
+        <news:name>Mibnews</news:name>
         <news:language>en</news:language>
       </news:publication>
       <news:publication_date>${pubDate}</news:publication_date>

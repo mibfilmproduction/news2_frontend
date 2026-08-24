@@ -29,12 +29,12 @@ interface SEOProps {
   }>;
 }
 
-const siteName = 'mibDaily News';
+const siteName = 'Mibnews';
 const siteDescription = 'Delivering the latest breaking news and top stories across politics, entertainment, sports, business from India and around the world.';
-const defaultDescription = 'The latest news and updates from mibDaily News - Your trusted source for breaking news in Hindi and English';
+const defaultDescription = 'The latest news and updates from Mibnews - Your trusted source for breaking news in Hindi and English';
 const defaultImage = '/logo.png';
-const twitterHandle = '@mibdailynews';
-const facebookPage = 'mibdailynews';
+const twitterHandle = '@mibnews';
+const facebookPage = 'mibnews';
 
 const SEO: React.FC<SEOProps> = ({
   title,
@@ -116,7 +116,7 @@ const SEO: React.FC<SEOProps> = ({
     dateModified: String(updatedAt || publishedAt || ''),
     author: {
       '@type': 'Person',
-      name: String(author || 'mibDaily News')
+      name: String(author || 'Mibnews')
     },
     publisher: {
       '@type': 'Organization',
@@ -191,8 +191,8 @@ const SEO: React.FC<SEOProps> = ({
           sameAs: [
             `https://www.facebook.com/${facebookPage}`,
             `https://twitter.com/${twitterHandle.replace('@', '')}`,
-            'https://www.instagram.com/mibitnews/',
-            'https://www.youtube.com/c/mibitnews'
+            'https://www.instagram.com/mibnews/',
+            'https://www.youtube.com/@mibnews'
           ],
           contactPoint: {
             '@type': 'ContactPoint',

@@ -115,9 +115,9 @@ const Career: React.FC = () => {
     <div className="container mx-auto py-8 px-4">
       <SEO
         title="Careers"
-        description="Join our team at mibDaily News - View our current job openings and career opportunities in journalism, media and technology."
+        description="Join our team at Mibnews - View our current job openings and career opportunities in journalism, media and technology."
         url="/careers"
-        keywords={['careers mibdaily', 'jobs in news', 'journalism jobs', 'media jobs', 'mibdaily']}
+        keywords={['careers mibnews', 'jobs in news', 'journalism jobs', 'media jobs', 'mibnews']}
       />
 
       <div className="text-center mb-12">
@@ -326,7 +326,7 @@ const Career: React.FC = () => {
       {/* Info section */}
       <Card className="bg-primary/5 border-primary/20">
         <CardHeader>
-          <CardTitle>Why Join mibDaily News?</CardTitle>
+          <CardTitle>Why Join Mibnews?</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">

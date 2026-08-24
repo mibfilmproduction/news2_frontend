@@ -7,9 +7,9 @@ const PrivacyPolicy: React.FC = () => {
     <div className="container mx-auto py-8 px-4">
       <SEO
         title="Privacy Policy"
-        description="Privacy Policy for mibDaily News - How we handle your data. Learn about our practices regarding the collection, use, and disclosure of your information."
+        description="Privacy Policy for Mibnews - How we handle your data. Learn about our practices regarding the collection, use, and disclosure of your information."
         url="/privacy-policy"
-        keywords={['privacy policy', 'mibdaily privacy', 'data protection', 'mibdaily']}
+        keywords={['privacy policy', 'mibnews privacy', 'data protection', 'mibnews']}
       />
 
       <h1 className="text-3xl font-bold mb-8 text-center">Privacy Policy</h1>
@@ -20,12 +20,12 @@ const PrivacyPolicy: React.FC = () => {
         </CardHeader>
         <CardContent className="prose max-w-none">
           <p>
-            At mibDaily News, we are committed to protecting your privacy and ensuring the security of your personal information.
+            At Mibnews, we are committed to protecting your privacy and ensuring the security of your personal information.
             This Privacy Policy outlines our practices regarding the collection, use, and disclosure of your information
             when you use our website and services.
           </p>
           <p>
-            By using mibDaily News, you agree to the collection and use of information in accordance with this policy.
+            By using Mibnews, you agree to the collection and use of information in accordance with this policy.
             We will not use or share your information with anyone except as described in this Privacy Policy.
           </p>
         </CardContent>
@@ -64,7 +64,7 @@ const PrivacyPolicy: React.FC = () => {
           <CardTitle>Use of Data</CardTitle>
         </CardHeader>
         <CardContent className="prose max-w-none">
-          <p>mibDaily News uses the collected data for various purposes:</p>
+          <p>Mibnews uses the collected data for various purposes:</p>
           <ul className="list-disc pl-6">
             <li>To provide and maintain our service</li>
             <li>To notify you about changes to our service</li>
@@ -128,7 +128,7 @@ const PrivacyPolicy: React.FC = () => {
             If you have any questions about this Privacy Policy, please contact us:
           </p>
           <ul className="list-disc pl-6">
-            <li>By email: privacy@mibitnews.com</li>
+            <li>By email: privacy@mibnews.in</li>
             <li>By visiting the contact page on our website</li>
             <li>By phone: +1 234 567 8900</li>
           </ul>

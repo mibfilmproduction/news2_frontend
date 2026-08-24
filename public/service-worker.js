@@ -1,5 +1,5 @@
-// Service Worker for MIBIT News
-const CACHE_NAME = 'mibit-news-cache-v1';
+// Service Worker for Mibnews
+const CACHE_NAME = 'mibnews-cache-v1';
 const OFFLINE_PAGE = '/offline.html';
 
 // Resources we want to cache

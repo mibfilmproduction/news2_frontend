@@ -540,7 +540,7 @@ const ShortPostsPage = () => {
         title="Short Posts"
         description="Browse our collection of short posts on various topics. Quick updates and micro-content from our community."
         url="/short-posts"
-        keywords={['short posts', 'quick news', 'micro content', 'mibdaily']}
+        keywords={['short posts', 'quick news', 'micro content', 'mibnews']}
       />
       
       <div className="mb-8">

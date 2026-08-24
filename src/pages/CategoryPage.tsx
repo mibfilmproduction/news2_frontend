@@ -175,7 +175,7 @@ const CategoryPage = () => {
       return article.title.split(' ').slice(0, 2).join(' ').toLowerCase();
     });
     
-    return [...baseKeywords, ...languageKeywords, ...articleKeywords, 'mibDaily news'];
+    return [...baseKeywords, ...languageKeywords, ...articleKeywords, 'mibnews'];
   };
   
   // Generate description for the category
@@ -193,15 +193,15 @@ const CategoryPage = () => {
     
     if (articleCount === 0) {
       return language === 'hindi'
-        ? `सबसे ताज़ा ${categoryName} समाचार और अपडेट पाएं मिबिट न्यूज़ पर`
-        : `Latest ${categoryName} news, updates and coverage from mibDaily News. Stay informed with exclusive stories, analysis, and breaking news.`;
+        ? `सबसे ताज़ा ${categoryName} समाचार और अपडेट पाएं मिबन्यूज़ पर`
+        : `Latest ${categoryName} news, updates and coverage from Mibnews. Stay informed with exclusive stories, analysis, and breaking news.`;
     }
     
     // If we have articles, include the first article title
     const firstArticleTitle = articles[0].title;
     return language === 'hindi'
-      ? `${firstArticleTitle} - सबसे ताज़ा ${categoryName} समाचार पाएं मिबिट न्यूज़ पर`
-      : `${firstArticleTitle} - Get the latest ${categoryName} news, updates and expert analysis at mibDaily News`;
+      ? `${firstArticleTitle} - सबसे ताज़ा ${categoryName} समाचार पाएं मिबन्यूज़ पर`
+      : `${firstArticleTitle} - Get the latest ${categoryName} news, updates and expert analysis at Mibnews`;
   };
   
   // Generate breadcrumbs for the category
@@ -218,7 +218,7 @@ const CategoryPage = () => {
   return (
     <div className="container mx-auto px-4 py-8">
       <SEO
-        title={`${category.name} News | Latest Articles and Updates | mibDaily News`}
+        title={`${category.name} News | Latest Articles and Updates | Mibnews`}
         description={generateDescription()}
         keywords={generateKeywords()}
         type="website"

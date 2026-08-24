@@ -231,8 +231,8 @@ const HomePage = () => {
   const generateDescription = () => {
     if (articles.length === 0) {
       return language === 'hindi'
-        ? 'ताज़ा खबरें, ब्रेकिंग न्यूज़, बॉलीवुड, बिज़नेस, क्रिकेट और राजनीति समाचार हिंदी में पढ़ें mibDaily News पर'
-        : 'Read latest news, breaking news, politics, business, cricket, entertainment and technology news in English on mibDaily News';
+        ? 'ताज़ा खबरें, ब्रेकिंग न्यूज़, बॉलीवुड, बिज़नेस, क्रिकेट और राजनीति समाचार हिंदी में पढ़ें Mibnews पर'
+        : 'Read latest news, breaking news, politics, business, cricket, entertainment and technology news in English on Mibnews';
     }
     
     // Use the title of the top article in the description
@@ -240,8 +240,8 @@ const HomePage = () => {
     const topTitle = typeof topArticle?.title === 'string' ? topArticle.title : '';
     
     return language === 'hindi'
-      ? `${topTitle} - ताज़ा खबरें और ब्रेकिंग न्यूज़ हिंदी में पढ़ें mibDaily News पर`
-      : `${topTitle} - Get the latest breaking news and top stories from India and around the world on mibDaily News`;
+      ? `${topTitle} - ताज़ा खबरें और ब्रेकिंग न्यूज़ हिंदी में पढ़ें Mibnews पर`
+      : `${topTitle} - Get the latest breaking news and top stories from India and around the world on Mibnews`;
   };
 
   return (
@@ -250,7 +250,7 @@ const HomePage = () => {
       {/* SEO Optimization */}
       
       <SEO
-        title="Breaking News, Latest News, Trending Stories | mibDaily News"
+        title="Breaking News, Latest News, Trending Stories | Mibnews"
         description={generateDescription()}
         keywords={generateKeywords()}
         type="website"

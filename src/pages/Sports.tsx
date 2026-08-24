@@ -184,9 +184,9 @@ const Sports = () => {
     <div className="container mx-auto py-6 px-4">
       <SEO
         title="Sports"
-        description="Get the latest sports news, live scores, and match updates on cricket, football, kabaddi and more on mibDaily News."
+        description="Get the latest sports news, live scores, and match updates on cricket, football, kabaddi and more on Mibnews."
         url="/sports"
-        keywords={['sports news', 'cricket news', 'live scores', 'football', 'kabaddi', 'mibdaily']}
+        keywords={['sports news', 'cricket news', 'live scores', 'football', 'kabaddi', 'mibnews']}
       />
       
       <h1 className="text-3xl font-bold mb-6">Sports Central</h1>

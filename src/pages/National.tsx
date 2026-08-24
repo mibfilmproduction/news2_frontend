@@ -88,9 +88,9 @@ const National = () => {
     <div className="container mx-auto px-4 py-8">
       <SEO
         title="National News"
-        description="National news from India - latest updates on politics, government, economy and states across the country on mibDaily News."
+        description="National news from India - latest updates on politics, government, economy and states across the country on Mibnews."
         url="/national"
-        keywords={['national news', 'india news', 'desh ki khabar', 'politics india', 'mibdaily']}
+        keywords={['national news', 'india news', 'desh ki khabar', 'politics india', 'mibnews']}
       />
       <h1 className="text-3xl font-bold mb-6">National News</h1>
 

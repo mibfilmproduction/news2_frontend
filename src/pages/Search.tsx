@@ -260,9 +260,9 @@ const Search = () => {
     <div className="container mx-auto px-4 py-8">
       <SEO
         title="Search Articles"
-        description="Search news articles on mibDaily News. Find the latest news, top stories and articles by keyword, category or date."
+        description="Search news articles on Mibnews. Find the latest news, top stories and articles by keyword, category or date."
         url="/search"
-        keywords={['search news', 'find articles', 'news search', 'mibdaily']}
+        keywords={['search news', 'find articles', 'news search', 'mibnews']}
       />
       <h1 className="text-3xl font-bold mb-8">Search Articles</h1>
       

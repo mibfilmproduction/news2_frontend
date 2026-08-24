@@ -222,8 +222,8 @@ const CareerDetail: React.FC = () => {
   const handleShareJob = () => {
     if (navigator.share && job) {
       navigator.share({
-        title: `Job Opening: ${job.title} at mibDaily News`,
-        text: `Check out this job opportunity: ${job.title} at mibDaily News`,
+        title: `Job Opening: ${job.title} at Mibnews`,
+        text: `Check out this job opportunity: ${job.title} at Mibnews`,
         url: window.location.href,
       })
       .catch((error) => console.log('Error sharing', error));
@@ -276,9 +276,9 @@ const CareerDetail: React.FC = () => {
     <div className="container mx-auto py-8 px-4">
       <SEO
         title={`${job.title} - Careers`}
-        description={`Apply for ${job.title} position at mibDaily News - ${job.location}`}
+        description={`Apply for ${job.title} position at Mibnews - ${job.location}`}
         url={`/career/${job.slug || job._id}`}
-        keywords={[job.title, `${job.title} job`, 'mibdaily careers', 'news jobs', job.department || '']}
+        keywords={[job.title, `${job.title} job`, 'mibnews careers', 'news jobs', job.department || '']}
         type="article"
       />
 
@@ -397,7 +397,7 @@ const CareerDetail: React.FC = () => {
                       <CheckCircle className="mx-auto h-12 w-12 text-green-500 mb-4" />
                       <DialogTitle className="text-2xl mb-2">Application Submitted!</DialogTitle>
                       <DialogDescription className="text-base">
-                        Thank you for applying to mibDaily News. We've received your application
+                        Thank you for applying to Mibnews. We've received your application
                         and will review it soon. We'll contact you if your qualifications match our needs.
                       </DialogDescription>
                     </div>
@@ -542,7 +542,7 @@ const CareerDetail: React.FC = () => {
         <div className="text-center mb-8">
           <h2 className="text-2xl font-bold mb-4">Join Our Team</h2>
           <p className="text-gray-600 max-w-2xl mx-auto mb-6">
-            At mibDaily News, we're always looking for passionate, talented people to join our team
+            At Mibnews, we're always looking for passionate, talented people to join our team
             and help us deliver quality news and information to our audience.
           </p>
           <Button variant="outline" onClick={() => navigate('/career')}>

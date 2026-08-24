@@ -63,9 +63,9 @@ const Latest = () => {
     <div className="container mx-auto px-4 py-8">
       <SEO
         title="Latest News"
-        description="Get the latest news updates from India and around the world. Breaking news, top stories and live updates on mibDaily News."
+        description="Get the latest news updates from India and around the world. Breaking news, top stories and live updates on Mibnews."
         url="/latest"
-        keywords={['latest news', 'breaking news', 'india news', 'top stories', 'mibdaily']}
+        keywords={['latest news', 'breaking news', 'india news', 'top stories', 'mibnews']}
       />
       <h1 className="text-3xl font-bold mb-6">Latest News</h1>
 

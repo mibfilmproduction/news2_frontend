@@ -32,7 +32,7 @@ const InstagramReels: React.FC<InstagramReelsProps> = ({
       videoUrl: 'https://example.com/video1.mp4',
       thumbnail: 'https://images.unsplash.com/photo-1585399000684-d2f72660f092?q=80&w=1000',
       externalUrl: 'https://www.instagram.com/reel/sample1/',
-      author: { _id: 'instagram', name: 'miit_news' },
+      author: { _id: 'instagram', name: 'mibnews' },
       isExternal: true,
       platform: 'instagram',
       createdAt: new Date().toISOString(),
@@ -51,7 +51,7 @@ const InstagramReels: React.FC<InstagramReelsProps> = ({
       videoUrl: 'https://example.com/video2.mp4',
       thumbnail: 'https://images.unsplash.com/photo-1612872087720-bb876e2e67d1?q=80&w=1000',
       externalUrl: 'https://www.instagram.com/reel/sample2/',
-      author: { _id: 'instagram', name: 'miit_news' },
+      author: { _id: 'instagram', name: 'mibnews' },
       isExternal: true,
       platform: 'instagram',
       createdAt: new Date(Date.now() - 86400000).toISOString(), // Yesterday
@@ -70,7 +70,7 @@ const InstagramReels: React.FC<InstagramReelsProps> = ({
       videoUrl: 'https://example.com/video3.mp4',
       thumbnail: 'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?q=80&w=1000',
       externalUrl: 'https://www.instagram.com/reel/sample3/',
-      author: { _id: 'instagram', name: 'miit_news' },
+      author: { _id: 'instagram', name: 'mibnews' },
       isExternal: true,
       platform: 'instagram',
       createdAt: new Date(Date.now() - 172800000).toISOString(), // 2 days ago

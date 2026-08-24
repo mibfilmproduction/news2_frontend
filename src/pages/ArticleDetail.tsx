@@ -241,7 +241,7 @@ const ArticleDetail = () => {
       'news',
       'article',
       language === 'hindi' ? 'हिंदी समाचार' : 'english news',
-      'mibDaily news'
+      'mibnews'
     ].filter(Boolean); // Remove empty items
   };
   

@@ -107,7 +107,7 @@ const AdminLiveTvPage: React.FC = () => {
   const [isSelfNews, setIsSelfNews] = useState(false);
   const [newsContent, setNewsContent] = useState('');
   const [newsType, setNewsType] = useState('breaking');
-  const [newsSource, setNewsSource] = useState('mibDaily News');
+  const [newsSource, setNewsSource] = useState('Mibnews');
   const [isShareDialogOpen, setIsShareDialogOpen] = useState(false);
   const [shareLoading, setShareLoading] = useState(false);
   const [currentShareChannel, setCurrentShareChannel] = useState<LiveTvChannel | null>(null);
@@ -909,13 +909,13 @@ const AdminLiveTvPage: React.FC = () => {
             <div className="grid grid-cols-1 gap-3">
               <div className="flex items-center">
                 <div className="flex-1">
-                  <Label htmlFor="news-source">News Source</Label>
-                  <Input
-                    id="news-source"
-                    placeholder="Source (e.g. mibDaily News)"
-                    value={newsSource}
-                    onChange={(e) => setNewsSource(e.target.value)}
-                  />
+<Label htmlFor="news-source">News Source</Label>
+                    <Input
+                      id="news-source"
+                      placeholder="Source (e.g. Mibnews)"
+                      value={newsSource}
+                      onChange={(e) => setNewsSource(e.target.value)}
+                    />
                 </div>
               </div>
             </div>
@@ -929,7 +929,7 @@ const AdminLiveTvPage: React.FC = () => {
               rows={6}
             />
             <div className="text-sm text-muted-foreground">
-              Write your own news content to share on the channel. This will be displayed as coming from mibDaily News.
+              Write your own news content to share on the channel. This will be displayed as coming from Mibnews.
             </div>
           </div>
         )}

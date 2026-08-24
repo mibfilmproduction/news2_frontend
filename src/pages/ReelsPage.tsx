@@ -430,7 +430,7 @@ const ReelsPage = () => {
         title="Video Reels"
         description="Watch our latest video reels on various topics. Short video content and news reels from our contributors."
         url="/reels"
-        keywords={['video reels', 'short videos', 'news reels', 'mibdaily']}
+        keywords={['video reels', 'short videos', 'news reels', 'mibnews']}
         image={reels[0]?.thumbnail ? getImageUrl(reels[0].thumbnail) : undefined}
       />
 

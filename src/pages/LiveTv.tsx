@@ -141,9 +141,9 @@ const LiveTvPage: React.FC = () => {
     <div className="min-h-screen bg-background">
       <SEO
         title="Live TV"
-        description="Watch live TV channels online for free - live news channels, entertainment and sports streaming on mibDaily News."
+        description="Watch live TV channels online for free - live news channels, entertainment and sports streaming on Mibnews."
         url="/live-tv"
-        keywords={['live tv', 'live news channel', 'watch live tv online', 'live streaming', 'mibdaily']}
+        keywords={['live tv', 'live news channel', 'watch live tv online', 'live streaming', 'mibnews']}
       />
       <div className="container mx-auto py-6 px-4 md:px-6">
         <div className="flex items-center justify-between mb-6">

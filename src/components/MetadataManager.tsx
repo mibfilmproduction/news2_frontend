@@ -55,7 +55,7 @@ const MetadataManager: React.FC<MetadataManagerProps> = ({
     
     // Clean up function to restore title when component unmounts
     return () => {
-      document.title = 'mibDaily News';
+      document.title = 'Mibnews';
     };
   }, [title, description, keywords, image]);
   

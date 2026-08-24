@@ -29,9 +29,9 @@ interface SettingsState {
 }
 
 const DEFAULT_SETTINGS: SettingsState = {
-  siteTitle: "mibDaily News",
+  siteTitle: "Mibnews",
   siteTagline: "The Pinnacle of News Coverage",
-  adminEmail: "admin@mibit.com",
+  adminEmail: "admin@mibnews.in",
   logoUrl: "/logo.png",
   faviconUrl: "/favicon.ico",
   articlesPerPage: 10,

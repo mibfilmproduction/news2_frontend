@@ -60,9 +60,9 @@ const Entertainment = () => {
     <div className="container mx-auto px-4 py-8">
       <SEO
         title="Entertainment News"
-        description="Entertainment news, Bollywood updates, movie reviews, celebrity gossip and showbiz stories on mibDaily News."
+        description="Entertainment news, Bollywood updates, movie reviews, celebrity gossip and showbiz stories on Mibnews."
         url="/entertainment"
-        keywords={['entertainment news', 'bollywood news', 'movie updates', 'celebrity news', 'mibdaily']}
+        keywords={['entertainment news', 'bollywood news', 'movie updates', 'celebrity news', 'mibnews']}
       />
       <h1 className="text-3xl font-bold mb-6">Entertainment News</h1>
 

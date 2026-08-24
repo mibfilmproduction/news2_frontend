@@ -79,9 +79,9 @@ const Breaking = () => {
     <div className="container mx-auto px-4 py-8">
       <SEO
         title="Breaking News"
-        description="Live breaking news and top headlines - stay updated with the latest breaking news alerts from India and around the world on mibDaily News."
+        description="Live breaking news and top headlines - stay updated with the latest breaking news alerts from India and around the world on Mibnews."
         url="/breaking"
-        keywords={['breaking news', 'live news', 'headlines', 'breaking news today', 'mibdaily']}
+        keywords={['breaking news', 'live news', 'headlines', 'breaking news today', 'mibnews']}
       />
       <div className="flex items-center mb-6">
         <div className="h-5 w-5 rounded-full bg-red-600 animate-pulse mr-3"></div>

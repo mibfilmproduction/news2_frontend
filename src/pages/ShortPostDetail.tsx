@@ -833,7 +833,7 @@ const ShortPostDetail = () => {
                           </div>
                         ) : (
                           <div className="h-[80px] bg-gradient-to-r from-blue-100 to-indigo-100 flex items-center justify-center">
-                            <span className="text-gray-600 text-xs font-medium">mibDaily News</span>
+                            <span className="text-gray-600 text-xs font-medium">Mibnews</span>
                           </div>
                         )}
                         <div className="p-4">
