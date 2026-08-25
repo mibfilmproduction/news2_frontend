@@ -1,7 +1,4 @@
-import api from './api';
-
-// Set to false to use real API instead of mock data
-const MOCK_MODE = false;
+import { videoApi } from '@/lib/api-client';
 
 export interface VideoType {
   _id: string;
@@ -44,13 +41,13 @@ export interface VideosResponse {
 
 // Cache for video data to persist between page refreshes
 let videoCache: {
-  data: VideosResponse | null,
-  timestamp: number,
-  params: string
+  data: VideosResponse | null;
+  timestamp: number;
+  params: string;
 } = {
   data: null,
   timestamp: 0,
-  params: ''
+  params: '',
 };
 
 // Get all videos
@@ -60,71 +57,68 @@ export const getVideos = async (
   limit: number = 10,
   category?: string,
   forceRefresh: boolean = false
-) => {
+): Promise<VideosResponse> => {
   try {
-    // Define params object - no admin bypass param; staff status is
-    // determined server-side from the JWT token
-    interface VideoQueryParams {
-      videoLanguage: 'hindi' | 'english';
-      page: number;
-      limit: number;
-      category?: string;
-    }
-    
     // Clear cache if force refresh is requested
     if (forceRefresh) {
       videoCache = {
         data: null,
         timestamp: 0,
-        params: ''
+        params: '',
       };
     }
-    
-    const params: VideoQueryParams = { 
+
+    const params: Record<string, string | number | boolean | undefined> = {
       videoLanguage: language,
-      page, 
+      page,
       limit,
-      ...(category && { category }) 
+      ...(category && { category }),
     };
-    
+
     const paramsKey = JSON.stringify(params);
     const now = Date.now();
     const cacheValidTime = 30 * 1000;
-    
+
     // Use cached data if available and not expired (unless forceRefresh is true)
-    if (!forceRefresh && 
-        videoCache.data && 
-        videoCache.timestamp > (now - cacheValidTime) && 
-        videoCache.params === paramsKey) {
+    if (
+      !forceRefresh &&
+      videoCache.data &&
+      videoCache.timestamp > now - cacheValidTime &&
+      videoCache.params === paramsKey
+    ) {
       return videoCache.data;
     }
-    
-    // Create timeout for the request
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 15000);
-    
-    const response = await api.get<VideosResponse>('/videos', { 
-      params,
-      signal: controller.signal,
-    });
-    
-    clearTimeout(timeoutId);
-    
-    if (!response.data || !response.data.videos) {
+
+    const response = await videoApi.getVideos(params);
+
+    if (!response.success || !response.data) {
       throw new Error('Invalid response format from server');
     }
-    
+
+    // Handle both direct array and paginated response
+    let result: VideosResponse;
+    if (Array.isArray(response.data)) {
+      result = {
+        videos: response.data,
+        currentPage: page,
+        totalPages: 1,
+        total: response.data.length,
+      };
+    } else {
+      result = response.data as VideosResponse;
+    }
+
     // Update cache with new data
     videoCache = {
-      data: response.data,
+      data: result,
       timestamp: now,
-      params: paramsKey
+      params: paramsKey,
     };
-    
-    return response.data;
+
+    return result;
   } catch (error: any) {
     console.error('Error in videoService.getVideos:', error);
-    
+
     if (error.name === 'AbortError') {
       throw new Error('Request timeout: The server took too long to respond. Please try again later.');
     } else if (error.response) {
@@ -138,8 +132,11 @@ export const getVideos = async (
 };
 
 // Get a single video by ID
-export const getVideoById = async (id: string) => {
-  const response = await api.get<VideoType>(`/videos/${id}`);
+export const getVideoById = async (id: string): Promise<VideoType> => {
+  const response = await videoApi.getVideo(id);
+  if (!response.success || !response.data) {
+    throw new Error('Video not found');
+  }
   return response.data;
 };
 
@@ -147,10 +144,12 @@ export const getVideoById = async (id: string) => {
 export const getFeaturedVideos = async (
   language: 'hindi' | 'english' = 'hindi',
   limit: number = 6
-) => {
-  const params = { videoLanguage: language, limit };
-  const response = await api.get<VideoType[]>('/videos/featured', { params });
-  return response.data;
+): Promise<VideoType[]> => {
+  const response = await videoApi.getVideos({ videoLanguage: language, limit, featured: true });
+  if (!response.success || !response.data) {
+    return [];
+  }
+  return Array.isArray(response.data) ? response.data : (response.data.videos || []);
 };
 
 // Get videos by category
@@ -159,55 +158,44 @@ export const getVideosByCategory = async (
   language: 'hindi' | 'english' = 'hindi',
   page: number = 1,
   limit: number = 10
-) => {
-  const params = { videoLanguage: language, page, limit };
-  const response = await api.get<VideosResponse>(`/videos/category/${categoryId}`, { params });
-  return response.data;
+): Promise<VideosResponse> => {
+  const response = await videoApi.getVideos({ videoLanguage: language, page, limit, category: categoryId });
+  if (!response.success || !response.data) {
+    throw new Error('Invalid response format from server');
+  }
+  if (Array.isArray(response.data)) {
+    return {
+      videos: response.data,
+      currentPage: page,
+      totalPages: 1,
+      total: response.data.length,
+    };
+  }
+  return response.data as VideosResponse;
 };
 
 // Admin functions
 // Create a new video
-export const createVideo = async (videoData: FormData, progressCallback?: (event: any) => void): Promise<VideoType> => {
+export const createVideo = async (
+  videoData: FormData,
+  progressCallback?: (event: any) => void
+): Promise<VideoType> => {
   try {
-    // Check for token before attempting upload
-    const token = localStorage.getItem('token') || sessionStorage.getItem('token');
-    if (!token) {
-      console.warn('No authentication token found in storage');
-      throw new Error('Authentication failed. Please log in again.');
-    }
-    
     // Setup a longer timeout for video uploads (60 seconds)
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 60000); // 60 second timeout for uploads
-    
-    const response = await api.post<any>('/videos', videoData, {
-      headers: {
-        'Content-Type': 'multipart/form-data',
-      },
-      signal: controller.signal,
-      // Add progress tracking for large uploads
-      onUploadProgress: (progressEvent) => {
-        const percentCompleted = Math.round((progressEvent.loaded * 100) / (progressEvent.total || 1));
-        console.log(`Upload progress: ${percentCompleted}%`);
-        if (progressCallback) {
-          progressCallback(progressEvent);
-        }
-      }
-    });
-    
-    clearTimeout(timeoutId);
-    
+    const response = await videoApi.createVideo(videoData);
+
+    if (!response.success || !response.data) {
+      throw new Error(response.message || 'Failed to upload video');
+    }
+
     // Handle both old and new response formats
     if (response.data && response.data.success === true && response.data.video) {
-      // New format (success flag with nested video object)
       return response.data.video;
-    } else {
-      // Old format (direct video object)
-      return response.data;
     }
+    return response.data as VideoType;
   } catch (error: any) {
     console.error('Error creating video:', error);
-    
+
     if (error.name === 'AbortError') {
       throw new Error('Upload timeout: The server took too long to process your upload. Please try again with a smaller file.');
     } else if (error.response?.status === 413) {
@@ -226,32 +214,22 @@ export const createVideo = async (videoData: FormData, progressCallback?: (event
 };
 
 // Update a video
-export const updateVideo = async (id: string, videoData: FormData, progressCallback?: (event: any) => void) => {
+export const updateVideo = async (
+  id: string,
+  videoData: FormData,
+  progressCallback?: (event: any) => void
+): Promise<VideoType> => {
   try {
-    // Setup a longer timeout for video uploads (30 seconds)
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 30000);
-    
-    const response = await api.put<VideoType>(`/videos/${id}`, videoData, {
-      headers: {
-        'Content-Type': 'multipart/form-data',
-      },
-      signal: controller.signal,
-      // Add progress tracking for large uploads
-      onUploadProgress: (progressEvent) => {
-        const percentCompleted = Math.round((progressEvent.loaded * 100) / (progressEvent.total || 1));
-        console.log(`Update progress: ${percentCompleted}%`);
-        if (progressCallback) {
-          progressCallback(progressEvent);
-        }
-      }
-    });
-    
-    clearTimeout(timeoutId);
-    return response.data;
+    const response = await videoApi.updateVideo(id, videoData);
+
+    if (!response.success || !response.data) {
+      throw new Error(response.message || 'Failed to update video');
+    }
+
+    return response.data as VideoType;
   } catch (error: any) {
     console.error('Error updating video:', error);
-    
+
     if (error.name === 'AbortError') {
       throw new Error('Update timeout: The server took too long to process your update. Please try again with smaller files.');
     } else if (error.response?.status === 404) {
@@ -269,20 +247,16 @@ export const updateVideo = async (id: string, videoData: FormData, progressCallb
 };
 
 // Delete a video
-export const deleteVideo = async (id: string) => {
+export const deleteVideo = async (id: string): Promise<void> => {
   try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
-    
-    const response = await api.delete(`/videos/${id}`, {
-      signal: controller.signal
-    });
-    
-    clearTimeout(timeoutId);
-    return response.data;
+    const response = await videoApi.deleteVideo(id);
+
+    if (!response.success) {
+      throw new Error(response.message || 'Failed to delete video');
+    }
   } catch (error: any) {
     console.error('Error deleting video:', error);
-    
+
     if (error.name === 'AbortError') {
       throw new Error('Delete timeout: The server took too long to process your request.');
     } else if (error.response?.status === 404) {

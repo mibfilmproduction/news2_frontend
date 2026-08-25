@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, createContext, useContext } from 'react';
-import api from '../services/api';
+import { authApi } from '@/lib/api-client';
 
 // Define types
 interface User {
@@ -8,6 +8,7 @@ interface User {
   email: string;
   role: 'user' | 'editor' | 'admin';
   avatar?: string;
+  bio?: string;
 }
 
 interface RegisterData {
@@ -25,6 +26,8 @@ interface AuthContextType {
   isLoading: boolean;
   error: string | null;
   isAdmin: boolean;
+  isEditor: boolean;
+  isStaff: boolean;
   login: (email: string, password: string) => Promise<{ success: boolean; message?: string }>;
   logout: () => void;
   register: (userData: RegisterData) => Promise<{ success: boolean; message?: string }>;
@@ -40,11 +43,13 @@ const defaultAuthContext: AuthContextType = {
   isLoading: true,
   error: null,
   isAdmin: false,
+  isEditor: false,
+  isStaff: false,
   login: async () => ({ success: false, message: 'Not initialized' }),
   logout: () => {},
   register: async () => ({ success: false, message: 'Not initialized' }),
   updateProfile: async () => false,
-  checkAuthStatus: async () => false
+  checkAuthStatus: async () => false,
 };
 
 // Create the context
@@ -61,6 +66,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const storeAuthData = useCallback((userData: User, userToken: string) => {
     localStorage.setItem('user', JSON.stringify(userData));
     localStorage.setItem('token', userToken);
+    sessionStorage.setItem('user', JSON.stringify(userData));
+    sessionStorage.setItem('token', userToken);
     setUser(userData);
     setToken(userToken);
   }, []);
@@ -75,20 +82,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         if (storedToken && storedUser) {
           // Verify token validity with the server
-          const response = await api.get('/auth/verify');
-          if (response.data && response.data.success) {
+          const response = await authApi.verifyToken();
+          if (response.success && response.data) {
             setToken(storedToken);
             setUser(JSON.parse(storedUser));
           } else {
             // If token verification fails, clear stored data
             localStorage.removeItem('user');
             localStorage.removeItem('token');
+            sessionStorage.removeItem('user');
+            sessionStorage.removeItem('token');
           }
         }
       } catch (err) {
         console.error('Authentication error:', err);
         localStorage.removeItem('user');
         localStorage.removeItem('token');
+        sessionStorage.removeItem('user');
+        sessionStorage.removeItem('token');
       } finally {
         setIsLoading(false);
       }
@@ -103,14 +114,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setIsLoading(true);
       setError(null);
 
-      const response = await api.post('/auth/login', { email, password });
-      
-      if (response.data && response.data.success) {
+      const response = await authApi.login({ email, password });
+
+      if (response.success && response.data) {
         const { user, token } = response.data;
         storeAuthData(user, token);
         return { success: true };
       } else {
-        const errorMessage = response.data?.message || 'Login failed';
+        const errorMessage = response.message || 'Login failed';
         setError(errorMessage);
         return { success: false, message: errorMessage };
       }
@@ -128,6 +139,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const logout = useCallback(() => {
     localStorage.removeItem('user');
     localStorage.removeItem('token');
+    sessionStorage.removeItem('user');
+    sessionStorage.removeItem('token');
     setUser(null);
     setToken(null);
   }, []);
@@ -157,26 +170,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return { success: false, message: 'Please enter a valid email address' };
       }
 
-      // Default to 'user' role if none specified or if trying to register as admin without authorization
+      // Default to 'user' role if none specified
       const registrationData = {
         ...userData,
-        role: userData.role || 'user'
+        role: userData.role || 'user',
       };
 
-      // Admin role requires special authorization - additional checks would happen on the backend
+      // Admin role requires special authorization - backend will validate
       if (registrationData.role === 'admin') {
-        // The backend should validate if this user is allowed to be an admin
         console.log('Attempting to register with admin role - backend will verify');
       }
 
-      const response = await api.post('/auth/register', registrationData);
-      
-      if (response.data && response.data.success) {
+      const response = await authApi.register(registrationData);
+
+      if (response.success && response.data) {
         const { user, token } = response.data;
         storeAuthData(user, token);
         return { success: true };
       } else {
-        const errorMsg = response.data?.message || 'Registration failed';
+        const errorMsg = response.message || 'Registration failed';
         setError(errorMsg);
         return { success: false, message: errorMsg };
       }
@@ -195,16 +207,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setIsLoading(true);
       setError(null);
 
-      const response = await api.put('/users/profile', data);
-      
-      if (response.data && response.data.success) {
+      const response = await authApi.updateProfile?.(data) ?? await fetch('/api/users/profile', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify(data),
+      }).then(r => r.json());
+
+      if (response.success) {
         // Update user data in state and localStorage
         const updatedUser = { ...user, ...response.data.user } as User;
         localStorage.setItem('user', JSON.stringify(updatedUser));
+        sessionStorage.setItem('user', JSON.stringify(updatedUser));
         setUser(updatedUser);
         return true;
       } else {
-        setError(response.data?.message || 'Profile update failed');
+        setError(response.message || 'Profile update failed');
         return false;
       }
     } catch (err: any) {
@@ -220,23 +240,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       setIsLoading(true);
       setError(null);
-      
+
       const storedToken = localStorage.getItem('token');
       const storedUser = localStorage.getItem('user');
-      
+
       if (!storedToken || !storedUser) {
         logout();
         return false;
       }
-      
+
       // Verify token validity with the server
-      const response = await api.get('/auth/verify');
-      
-      if (response.data && response.data.success) {
+      const response = await authApi.verifyToken();
+
+      if (response.success) {
         // If the server returns updated user data, use it
-        if (response.data.user) {
-          const updatedUser = response.data.user;
+        if (response.data) {
+          const updatedUser = response.data;
           localStorage.setItem('user', JSON.stringify(updatedUser));
+          sessionStorage.setItem('user', JSON.stringify(updatedUser));
           setUser(updatedUser);
         } else {
           // Otherwise use the stored user data
@@ -265,11 +286,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     isLoading,
     error,
     isAdmin: user?.role === 'admin',
+    isEditor: user?.role === 'editor',
+    isStaff: user?.role === 'admin' || user?.role === 'editor',
     login,
     logout,
     register,
     updateProfile,
-    checkAuthStatus
+    checkAuthStatus,
   };
 
   return (

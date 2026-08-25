@@ -3,7 +3,7 @@
  * Provides API functions for working with article comments
  */
 
-import { api } from '@/lib/api-client';
+import { commentApi } from '@/lib/api-client';
 
 export interface CommentType {
   _id: string;
@@ -28,22 +28,10 @@ export interface CommentType {
  */
 export const getComments = async (articleId: string): Promise<CommentType[]> => {
   try {
-    // Try multiple endpoints to ensure compatibility with different API structures
-    const endpoints = [
-      `/comments/article/${articleId}`,
-      `/articles/${articleId}/comments`,
-      `/news/${articleId}/comments`
-    ];
-    
-    // Try each endpoint until one works
-    for (const endpoint of endpoints) {
-      const response = await api.get(endpoint);
-      if (response.success && Array.isArray(response.data)) {
-        return response.data;
-      }
+    const response = await commentApi.getCommentsByArticle(articleId);
+    if (response.success && Array.isArray(response.data)) {
+      return response.data;
     }
-    
-    console.warn('No valid comments data found for article:', articleId);
     return [];
   } catch (error) {
     console.error('Error fetching comments:', error);
@@ -59,26 +47,23 @@ export const getComments = async (articleId: string): Promise<CommentType[]> => 
  * @returns The created comment or null if submission failed
  */
 export const submitComment = async (
-  articleId: string, 
-  content: string, 
+  articleId: string,
+  content: string,
   parentId?: string
 ): Promise<CommentType | null> => {
   try {
-    // Prepare comment data
     const commentData = {
       article: articleId,
       content,
       ...(parentId && { parent: parentId })
     };
-    
-    // Use the correct endpoint based on backend implementation
-    // From the routes, we know that POST /api/comments is the only valid endpoint
-    const response = await api.post('/comments', commentData);
-    
+
+    const response = await commentApi.createComment(commentData);
+
     if (response.success && response.data) {
       return response.data;
     }
-    
+
     console.warn('Failed to submit comment for article:', articleId);
     return null;
   } catch (error) {
@@ -94,7 +79,7 @@ export const submitComment = async (
  */
 export const getCommentReplies = async (commentId: string): Promise<CommentType[]> => {
   try {
-    const response = await api.get(`/comments/${commentId}/replies`);
+    const response = await commentApi.getAllComments({ parent: commentId });
     if (response.success && Array.isArray(response.data)) {
       return response.data;
     }
@@ -112,7 +97,7 @@ export const getCommentReplies = async (commentId: string): Promise<CommentType[
  */
 export const deleteComment = async (commentId: string): Promise<boolean> => {
   try {
-    const response = await api.delete(`/comments/${commentId}`);
+    const response = await commentApi.deleteComment(commentId);
     return response.success;
   } catch (error) {
     console.error('Error deleting comment:', error);
@@ -127,11 +112,11 @@ export const deleteComment = async (commentId: string): Promise<boolean> => {
  * @returns The updated comment or null if update failed
  */
 export const updateCommentStatus = async (
-  commentId: string, 
+  commentId: string,
   status: 'approved' | 'rejected' | 'pending' | 'spam'
 ): Promise<CommentType | null> => {
   try {
-    const response = await api.put(`/comments/${commentId}/status`, { status });
+    const response = await commentApi.updateCommentStatus(commentId, status);
     if (response.success && response.data) {
       return response.data;
     }

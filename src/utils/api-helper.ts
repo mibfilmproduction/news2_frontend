@@ -3,7 +3,7 @@
  * All calls go directly to the real backend API.
  */
 
-import { api } from '@/lib/api-client';
+import { api, newsApi, categoryApi } from '@/lib/api-client';
 
 // Track API endpoints that have failed during the session to avoid retrying them
 const failedEndpoints = new Set<string>();
@@ -15,7 +15,7 @@ const failedEndpoints = new Set<string>();
  */
 export const fetchArticleBySlug = async (slug: string) => {
   try {
-    const response = await api.get(`/news/slug/${slug}`);
+    const response = await newsApi.getArticleBySlug(slug);
     if (response.success && response.data) {
       return response.data;
     }
@@ -35,7 +35,7 @@ export const fetchArticleBySlug = async (slug: string) => {
  */
 export const fetchRelatedArticles = async (categoryId: string, excludeArticleId?: string) => {
   try {
-    const response = await api.get('/news', { category: categoryId, limit: '10' });
+    const response = await newsApi.getArticles({ category: categoryId, limit: '10' });
     let articles = response.data;
     if (!Array.isArray(articles)) {
       articles = response.data?.data ?? response.data?.articles ?? null;
@@ -59,7 +59,7 @@ export const fetchRelatedArticles = async (categoryId: string, excludeArticleId?
  */
 export const fetchComments = async (articleId: string) => {
   try {
-    const response = await api.get(`/comments/article/${articleId}`);
+    const response = await api.get(`/comments/article/${articleId}`, {}, { requireAuth: false });
     if (response.success && response.data) {
       return response.data;
     }
@@ -119,4 +119,40 @@ export const hasFailedEndpoints = () => {
  */
 export const hasEndpointFailed = (endpoint: string) => {
   return failedEndpoints.has(endpoint);
+};
+
+/**
+ * Fetches categories with optional parameters
+ * @param params Query parameters
+ * @returns Array of categories
+ */
+export const fetchCategories = async (params?: { active?: boolean; format?: 'simple'; language?: 'hindi' | 'english' }) => {
+  try {
+    const response = await categoryApi.getCategories(params);
+    if (response.success && response.data) {
+      return response.data;
+    }
+    return [];
+  } catch (error) {
+    console.error('Error fetching categories:', error);
+    throw error;
+  }
+};
+
+/**
+ * Fetches a single category by ID
+ * @param id Category ID
+ * @returns Category data or null
+ */
+export const fetchCategoryById = async (id: string) => {
+  try {
+    const response = await categoryApi.getCategory(id);
+    if (response.success && response.data) {
+      return response.data;
+    }
+    return null;
+  } catch (error) {
+    console.error(`Error fetching category ${id}:`, error);
+    throw error;
+  }
 };

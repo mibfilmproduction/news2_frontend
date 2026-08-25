@@ -1,9 +1,9 @@
-import api from './api';
+import { liveTvApi } from '@/lib/api-client';
 
 // Define the LiveTvChannel interface
 export interface LiveTvChannel {
-  id?: string; // For backend compatibility
-  _id: string; // MongoDB ID used in frontend
+  id?: string;
+  _id: string;
   title: string;
   description?: string;
   category: string;
@@ -13,12 +13,12 @@ export interface LiveTvChannel {
   isLive: boolean;
   isFeatured: boolean;
   order: number;
-  viewCount: number; // View count for analytics
+  viewCount: number;
   createdAt?: Date;
   updatedAt?: Date;
 }
 
-// Normalize a channel from the backend (thumbnailImage -> thumbnailUrl)
+// Normalize a channel from the backend
 const normalizeChannel = (raw: any): LiveTvChannel => ({
   id: raw._id,
   _id: raw._id,
@@ -36,7 +36,7 @@ const normalizeChannel = (raw: any): LiveTvChannel => ({
   updatedAt: raw.updatedAt,
 });
 
-// Build a FormData payload for create/update (file upload support)
+// Build a FormData payload for create/update
 const buildFormData = (data: Partial<LiveTvChannel>, thumbnailFile?: File | null) => {
   const form = new FormData();
   form.append('title', data.title || '');
@@ -69,12 +69,12 @@ export const getLiveTvChannels = async (options: {
 } = {}): Promise<{ channels: LiveTvChannel[]; pages: number; total: number }> => {
   const { page = 1, limit = 10, category, language, featured } = options;
 
-  const params: any = { page, limit };
+  const params: Record<string, string | number | boolean | undefined> = { page, limit };
   if (category) params.category = category;
   if (language) params.language = language;
   if (featured !== undefined) params.featured = featured;
 
-  const response = await api.get<any>('/live-tv', { params });
+  const response = await liveTvApi.getChannels(params);
 
   const data = response.data?.data || [];
   const channels = data.map(normalizeChannel);
@@ -92,7 +92,7 @@ export const getLiveTvChannels = async (options: {
  */
 export const getLiveTvChannel = async (id: string): Promise<LiveTvChannel | null> => {
   try {
-    const response = await api.get<any>(`/live-tv/${id}`);
+    const response = await liveTvApi.getChannel(id);
     return response.data?.data ? normalizeChannel(response.data.data) : null;
   } catch (error) {
     console.error('Error fetching live TV channel:', error);
@@ -110,7 +110,7 @@ export const createLiveTvChannel = async (
   channelData: Partial<LiveTvChannel>,
   thumbnailFile?: File | null
 ): Promise<LiveTvChannel> => {
-  const response = await api.post<any>('/live-tv', buildFormData(channelData, thumbnailFile));
+  const response = await liveTvApi.createChannel(buildFormData(channelData, thumbnailFile));
   return normalizeChannel(response.data.data);
 };
 
@@ -126,7 +126,7 @@ export const updateLiveTvChannel = async (
   channelData: Partial<LiveTvChannel>,
   thumbnailFile?: File | null
 ): Promise<LiveTvChannel | null> => {
-  const response = await api.put<any>(`/live-tv/${id}`, buildFormData(channelData, thumbnailFile));
+  const response = await liveTvApi.updateChannel(id, buildFormData(channelData, thumbnailFile));
   return response.data?.data ? normalizeChannel(response.data.data) : null;
 };
 
@@ -136,7 +136,7 @@ export const updateLiveTvChannel = async (
  * @returns Updated channel data
  */
 export const toggleChannelFeatured = async (id: string): Promise<LiveTvChannel | null> => {
-  const response = await api.put<any>(`/live-tv/${id}/toggle-featured`);
+  const response = await liveTvApi.toggleFeatured(id);
   const channel = await getLiveTvChannel(id);
   return channel;
 };
@@ -147,8 +147,8 @@ export const toggleChannelFeatured = async (id: string): Promise<LiveTvChannel |
  * @returns boolean indicating success
  */
 export const deleteLiveTvChannel = async (id: string): Promise<boolean> => {
-  const response = await api.delete<any>(`/live-tv/${id}`);
-  return response.data?.success === true;
+  const response = await liveTvApi.deleteChannel(id);
+  return response.success === true;
 };
 
 /**
@@ -156,7 +156,7 @@ export const deleteLiveTvChannel = async (id: string): Promise<boolean> => {
  * @returns List of categories
  */
 export const getLiveTvCategories = async (): Promise<string[]> => {
-  const response = await api.get<any>('/live-tv/categories');
+  const response = await liveTvApi.getCategories();
   const data = response.data?.data || [];
   if (data.length > 0) {
     return data;

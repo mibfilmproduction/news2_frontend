@@ -9,6 +9,7 @@ import HomePage from "./pages/HomePage";
 import { AuthProvider } from "./hooks/useAuth.tsx";
 import ProtectedRoute from "./components/ProtectedRoute";
 import ErrorBoundary from "./components/ErrorBoundary";
+import { WebVitalsTracker } from "./components/WebVitalsTracker";
 
 // Lazy-loaded pages (code splitting - each page is a separate chunk)
 const Latest = lazy(() => import("./pages/Latest"));
@@ -153,6 +154,7 @@ function App() {
         <Router>
           <ScrollToTop /> {/* This ensures page scrolls to top on route change */}
           <AuthProvider>
+            <WebVitalsTracker />
             <AppRoutes />
           </AuthProvider>
         </Router>

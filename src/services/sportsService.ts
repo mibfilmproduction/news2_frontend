@@ -1,50 +1,477 @@
-import axios from 'axios';
+import { sportsApi } from '@/lib/api-client';
 
-// Base URLs for APIs
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+// Define the Sport interface
+export interface Sport {
+  _id: string;
+  id: string;
+  name: string;
+  slug: string;
+  icon?: string;
+  displayOrder: number;
+  isActive: boolean;
+}
+
+// Define the League interface
+export interface League {
+  _id: string;
+  id: string;
+  name: string;
+  slug: string;
+  shortName?: string;
+  logo?: string;
+  sport: string;
+  isActive: boolean;
+}
+
+// Define the Team interface
+export interface Team {
+  _id: string;
+  id: string;
+  name: string;
+  shortName?: string;
+  logo?: string;
+  sport: string;
+  league?: string;
+  country?: string;
+  isActive: boolean;
+}
+
+// Define the Match interface
+export interface Match {
+  _id: string;
+  id: string;
+  sport: string | Sport;
+  league: string | League;
+  homeTeam: string | Team;
+  awayTeam: string | Team;
+  startTime: string;
+  venue?: {
+    name: string;
+    city: string;
+  };
+  status: 'scheduled' | 'live' | 'completed' | 'postponed' | 'cancelled';
+  scores?: {
+    home: { value: number };
+    away: { value: number };
+  };
+  winner?: string | null;
+}
+
+// Cache for sports data
+let sportsCache: { data: Sport[] | null; timestamp: number } = { data: null, timestamp: 0 };
+
+export const getAllSports = async (params?: { active?: boolean }): Promise<Sport[]> => {
+  try {
+    const now = Date.now();
+    const cacheValidTime = 5 * 60 * 1000; // 5 minutes
+
+    if (sportsCache.data && sportsCache.timestamp > now - cacheValidTime) {
+      return sportsCache.data;
+    }
+
+    const response = await sportsApi.getSports(params);
+
+    if (!response.success || !response.data) {
+      throw new Error('Failed to fetch sports');
+    }
+
+    const sports = Array.isArray(response.data) ? response.data : response.data.data || [];
+
+    sportsCache = { data: sports, timestamp: now };
+    return sports;
+  } catch (error) {
+    console.error('Error fetching sports:', error);
+    throw error;
+  }
+};
+
+export const getSportBySlug = async (slug: string): Promise<Sport | null> => {
+  try {
+    // First try to get from cache
+    const sports = await getAllSports();
+    return sports.find(s => s.slug === slug) || null;
+  } catch (error) {
+    console.error(`Error fetching sport ${slug}:`, error);
+    throw error;
+  }
+};
+
+export const getSportLeagues = async (sportId: string): Promise<League[]> => {
+  try {
+    const response = await sportsApi.getLeagues({ sport: sportId });
+    if (!response.success || !response.data) {
+      return [];
+    }
+    return Array.isArray(response.data) ? response.data : response.data.data || [];
+  } catch (error) {
+    console.error(`Error fetching leagues for sport ${sportId}:`, error);
+    throw error;
+  }
+};
+
+export const getLiveMatches = async (sportId?: string): Promise<Match[]> => {
+  try {
+    const response = await sportsApi.getMatches({ sport: sportId, status: 'live' });
+    if (!response.success || !response.data) {
+      return [];
+    }
+    return Array.isArray(response.data) ? response.data : response.data.data || [];
+  } catch (error) {
+    console.error(`Error fetching live matches:`, error);
+    throw error;
+  }
+};
+
+export const getUpcomingMatches = async (sportId?: string, limit = 10): Promise<Match[]> => {
+  try {
+    const response = await sportsApi.getMatches({ sport: sportId, status: 'scheduled', limit });
+    if (!response.success || !response.data) {
+      return [];
+    }
+    return Array.isArray(response.data) ? response.data : response.data.data || [];
+  } catch (error) {
+    console.error(`Error fetching upcoming matches:`, error);
+    throw error;
+  }
+};
+
+export const getRecentResults = async (sportId?: string, limit = 10): Promise<Match[]> => {
+  try {
+    const response = await sportsApi.getMatches({ sport: sportId, status: 'completed', limit });
+    if (!response.success || !response.data) {
+      return [];
+    }
+    return Array.isArray(response.data) ? response.data : response.data.data || [];
+  } catch (error) {
+    console.error(`Error fetching recent results:`, error);
+    throw error;
+  }
+};
+
+export const getFeaturedMatches = async (sportId?: string): Promise<Match[]> => {
+  try {
+    const response = await sportsApi.getMatches({ sport: sportId, featured: true, limit: 5 });
+    if (!response.success || !response.data) {
+      return [];
+    }
+    return Array.isArray(response.data) ? response.data : response.data.data || [];
+  } catch (error) {
+    console.error('Error fetching featured matches:', error);
+    throw error;
+  }
+};
+
+export const getMatchDetails = async (matchId: string): Promise<Match | null> => {
+  try {
+    const response = await sportsApi.getMatch(matchId);
+    if (!response.success || !response.data) {
+      return null;
+    }
+    return response.data;
+  } catch (error) {
+    console.error(`Error fetching match details for ${matchId}:`, error);
+    throw error;
+  }
+};
+
+// Admin functions
+export const createSport = async (sportData: Omit<Sport, '_id' | 'id'>): Promise<Sport> => {
+  const response = await sportsApi.createSport(sportData);
+  if (!response.success || !response.data) {
+    throw new Error(response.message || 'Failed to create sport');
+  }
+  return response.data;
+};
+
+export const updateSport = async (id: string, sportData: Partial<Sport>): Promise<Sport> => {
+  const response = await sportsApi.updateSport(id, sportData);
+  if (!response.success || !response.data) {
+    throw new Error(response.message || 'Failed to update sport');
+  }
+  return response.data;
+};
+
+export const deleteSport = async (id: string): Promise<void> => {
+  const response = await sportsApi.deleteSport(id);
+  if (!response.success) {
+    throw new Error(response.message || 'Failed to delete sport');
+  }
+};
+
+export const createLeague = async (leagueData: Omit<League, '_id' | 'id'>): Promise<League> => {
+  const response = await sportsApi.createLeague(leagueData);
+  if (!response.success || !response.data) {
+    throw new Error(response.message || 'Failed to create league');
+  }
+  return response.data;
+};
+
+export const updateLeague = async (id: string, leagueData: Partial<League>): Promise<League> => {
+  const response = await sportsApi.updateLeague(id, leagueData);
+  if (!response.success || !response.data) {
+    throw new Error(response.message || 'Failed to update league');
+  }
+  return response.data;
+};
+
+export const deleteLeague = async (id: string): Promise<void> => {
+  const response = await sportsApi.deleteLeague(id);
+  if (!response.success) {
+    throw new Error(response.message || 'Failed to delete league');
+  }
+};
+
+export const createTeam = async (teamData: Omit<Team, '_id' | 'id'>): Promise<Team> => {
+  const response = await sportsApi.createTeam(teamData);
+  if (!response.success || !response.data) {
+    throw new Error(response.message || 'Failed to create team');
+  }
+  return response.data;
+};
+
+export const updateTeam = async (id: string, teamData: Partial<Team>): Promise<Team> => {
+  const response = await sportsApi.updateTeam(id, teamData);
+  if (!response.success || !response.data) {
+    throw new Error(response.message || 'Failed to update team');
+  }
+  return response.data;
+};
+
+export const deleteTeam = async (id: string): Promise<void> => {
+  const response = await sportsApi.deleteTeam(id);
+  if (!response.success) {
+    throw new Error(response.message || 'Failed to delete team');
+  }
+};
+
+export const createMatch = async (matchData: Omit<Match, '_id' | 'id'>): Promise<Match> => {
+  const response = await sportsApi.createMatch(matchData);
+  if (!response.success || !response.data) {
+    throw new Error(response.message || 'Failed to create match');
+  }
+  return response.data;
+};
+
+export const updateMatch = async (id: string, matchData: Partial<Match>): Promise<Match> => {
+  const response = await sportsApi.updateMatch(id, matchData);
+  if (!response.success || !response.data) {
+    throw new Error(response.message || 'Failed to update match');
+  }
+  return response.data;
+};
+
+export const deleteMatch = async (id: string): Promise<void> => {
+  const response = await sportsApi.deleteMatch(id);
+  if (!response.success) {
+    throw new Error(response.message || 'Failed to delete match');
+  }
+};
+
+// External Cricket API calls (unchanged, keep using axios)
 const CRICKET_API_URL = 'https://api.cricapi.com/v1';
-const CRICKET_API_KEY = import.meta.env.VITE_CRICKET_API_KEY || ''; // Configure via .env
+const CRICKET_API_KEY = import.meta.env.VITE_CRICKET_API_KEY || '';
+
+let axiosInstance: any = null;
+async function getAxios() {
+  if (!axiosInstance) {
+    const axiosModule = await import('axios');
+    axiosInstance = axiosModule.default;
+  }
+  return axiosInstance;
+}
+
+export const getCurrentMatches = async () => {
+  try {
+    const axios = await getAxios();
+    const response = await axios.get(`${CRICKET_API_URL}/currentMatches`, {
+      params: { apikey: CRICKET_API_KEY, offset: 0 }
+    });
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching current matches from external API:', error);
+    throw error;
+  }
+};
+
+export const getMatchScorecard = async (matchId: string) => {
+  try {
+    const response = await axios.get(`${CRICKET_API_URL}/match_scorecard`, {
+      params: { apikey: CRICKET_API_KEY, id: matchId }
+    });
+    return response.data;
+  } catch (error) {
+    console.error(`Error fetching scorecard for match ${matchId}:`, error);
+    throw error;
+  }
+};
+
+export const getMatchInfo = async (matchId: string) => {
+  try {
+    const response = await axios.get(`${CRICKET_API_URL}/match_info`, {
+      params: { apikey: CRICKET_API_KEY, id: matchId }
+    });
+    return response.data;
+  } catch (error) {
+    console.error(`Error fetching match info for ${matchId}:`, error);
+    throw error;
+  }
+};
+
+export const getPlayerStats = async (playerId: string) => {
+  try {
+    const response = await axios.get(`${CRICKET_API_URL}/players_info`, {
+      params: { apikey: CRICKET_API_KEY, id: playerId }
+    });
+    return response.data;
+  } catch (error) {
+    console.error(`Error fetching player stats for ${playerId}:`, error);
+    throw error;
+  }
+};
+
+export const getSeriesList = async () => {
+  try {
+    const response = await axios.get(`${CRICKET_API_URL}/series_list`, {
+      params: { apikey: CRICKET_API_KEY }
+    });
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching series list:', error);
+    throw error;
+  }
+};
+
+export const getSeriesInfo = async (seriesId: string) => {
+  try {
+    const response = await axios.get(`${CRICKET_API_URL}/series_info`, {
+      params: { apikey: CRICKET_API_KEY, id: seriesId }
+    });
+    return response.data;
+  } catch (error) {
+    console.error(`Error fetching series info for ${seriesId}:`, error);
+    throw error;
+  }
+};
+
+export const getSeriesMatches = async (seriesId: string) => {
+  try {
+    const response = await axios.get(`${CRICKET_API_URL}/series_matches`, {
+      params: { apikey: CRICKET_API_KEY, id: seriesId }
+    });
+    return response.data;
+  } catch (error) {
+    console.error(`Error fetching series matches for ${seriesId}:`, error);
+    throw error;
+  }
+};
+
+export const getSeriesStats = async (seriesId: string) => {
+  try {
+    const response = await axios.get(`${CRICKET_API_URL}/series_stats`, {
+      params: { apikey: CRICKET_API_KEY, id: seriesId }
+    });
+    return response.data;
+  } catch (error) {
+    console.error(`Error fetching series stats for ${seriesId}:`, error);
+    throw error;
+  }
+};
+
+export const getPlayerList = async () => {
+  try {
+    const response = await axios.get(`${CRICKET_API_URL}/players`, {
+      params: { apikey: CRICKET_API_KEY }
+    });
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching player list:', error);
+    throw error;
+  }
+};
+
+export const searchPlayers = async (name: string) => {
+  try {
+    const response = await axios.get(`${CRICKET_API_URL}/players`, {
+      params: { apikey: CRICKET_API_KEY, search: name }
+    });
+    return response.data;
+  } catch (error) {
+    console.error(`Error searching players with name ${name}:`, error);
+    throw error;
+  }
+};
+
+export const getTeamList = async () => {
+  try {
+    const response = await axios.get(`${CRICKET_API_URL}/countries`, {
+      params: { apikey: CRICKET_API_KEY }
+    });
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching team list:', error);
+    throw error;
+  }
+};
+
+export const getTeamInfo = async (teamId: string) => {
+  try {
+    const response = await axios.get(`${CRICKET_API_URL}/countries_info`, {
+      params: { apikey: CRICKET_API_KEY, id: teamId }
+    });
+    return response.data;
+  } catch (error) {
+    console.error(`Error fetching team info for ${teamId}:`, error);
+    throw error;
+  }
+};
+
+export const getCricketNews = async () => {
+  try {
+    const response = await axios.get(`${CRICKET_API_URL}/news_list`, {
+      params: { apikey: CRICKET_API_KEY }
+    });
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching cricket news:', error);
+    throw error;
+  }
+};
+
+export const formatCricketScore = (inningsScore: any) => {
+  if (!inningsScore) return '';
+  return `${inningsScore.runs || 0}/${inningsScore.wickets || 0} (${inningsScore.overs || 0} ov)`;
+};
+
+export const getCricketMatchStatus = (match: any) => {
+  if (!match) return '';
+  
+  if (match.matchEnded) {
+    return match.status || 'Completed';
+  } else if (match.matchStarted) {
+    return 'In Progress';
+  } else {
+    return 'Upcoming';
+  }
+};
 
 // Map of country codes to their official flag URLs
 export const COUNTRY_FLAGS: Record<string, string> = {
-  // Test playing nations
-  IND: 'https://flagcdn.com/w160/in.png', // India
-  AUS: 'https://flagcdn.com/w160/au.png', // Australia
-  ENG: 'https://flagcdn.com/w160/gb-eng.png', // England
-  NZ: 'https://flagcdn.com/w160/nz.png',  // New Zealand
-  SA: 'https://flagcdn.com/w160/za.png',   // South Africa
-  PAK: 'https://flagcdn.com/w160/pk.png',  // Pakistan
-  WI: 'https://flagcdn.com/w160/bb.png',   // West Indies (using Barbados flag)
-  SL: 'https://flagcdn.com/w160/lk.png',   // Sri Lanka
-  BAN: 'https://flagcdn.com/w160/bd.png',  // Bangladesh
-  AFG: 'https://flagcdn.com/w160/af.png',  // Afghanistan
-  
-  // Other ODI nations
-  IRE: 'https://flagcdn.com/w160/ie.png',  // Ireland
-  ZIM: 'https://flagcdn.com/w160/zw.png',  // Zimbabwe
-  SCO: 'https://flagcdn.com/w160/gb-sct.png', // Scotland
-  UAE: 'https://flagcdn.com/w160/ae.png',  // United Arab Emirates
-  NED: 'https://flagcdn.com/w160/nl.png',  // Netherlands
-  NEP: 'https://flagcdn.com/w160/np.png',  // Nepal
-  
-  // Popular T20 franchise leagues
-  // IPL teams
-  MI: 'https://flagcdn.com/w160/in.png',   // Mumbai Indians
-  CSK: 'https://flagcdn.com/w160/in.png',  // Chennai Super Kings
-  RCB: 'https://flagcdn.com/w160/in.png',  // Royal Challengers Bangalore
-  KKR: 'https://flagcdn.com/w160/in.png',  // Kolkata Knight Riders
-  
-  // Football nations
-  ESP: 'https://flagcdn.com/w160/es.png',  // Spain
-  BRA: 'https://flagcdn.com/w160/br.png',  // Brazil
-  ARG: 'https://flagcdn.com/w160/ar.png',  // Argentina
-  GER: 'https://flagcdn.com/w160/de.png',  // Germany
-  FRA: 'https://flagcdn.com/w160/fr.png',  // France
-  ITA: 'https://flagcdn.com/w160/it.png',  // Italy
-  POR: 'https://flagcdn.com/w160/pt.png',  // Portugal
-  BEL: 'https://flagcdn.com/w160/be.png',  // Belgium
-  
-  // Default flag for unknown codes
+  IND: 'https://flagcdn.com/w160/in.png',
+  AUS: 'https://flagcdn.com/w160/au.png',
+  ENG: 'https://flagcdn.com/w160/gb-eng.png',
+  NZ: 'https://flagcdn.com/w160/nz.png',
+  SA: 'https://flagcdn.com/w160/za.png',
+  PAK: 'https://flagcdn.com/w160/pk.png',
+  WI: 'https://flagcdn.com/w160/bb.png',
+  SL: 'https://flagcdn.com/w160/lk.png',
+  BAN: 'https://flagcdn.com/w160/bd.png',
+  AFG: 'https://flagcdn.com/w160/af.png',
+  IRE: 'https://flagcdn.com/w160/ie.png',
+  ZIM: 'https://flagcdn.com/w160/zw.png',
+  SCO: 'https://flagcdn.com/w160/gb-sct.png',
+  UAE: 'https://flagcdn.com/w160/ae.png',
+  NED: 'https://flagcdn.com/w160/nl.png',
+  NEP: 'https://flagcdn.com/w160/np.png',
   DEFAULT: 'https://flagcdn.com/w160/xx.png'
 };
 
@@ -180,299 +607,4 @@ export const SAMPLE_SCORECARD = {
       ]
     }
   ]
-};
-
-// Internal API Services
-export const getAllSports = async () => {
-  try {
-    const response = await axios.get(`${API_URL}/sports`);
-    return response.data;
-  } catch (error) {
-    console.error('Error fetching sports:', error);
-    throw error;
-  }
-};
-
-export const getSportBySlug = async (slug: string) => {
-  try {
-    const response = await axios.get(`${API_URL}/sports/${slug}`);
-    return response.data;
-  } catch (error) {
-    console.error(`Error fetching sport ${slug}:`, error);
-    throw error;
-  }
-};
-
-export const getSportLeagues = async (sportId: string) => {
-  try {
-    const response = await axios.get(`${API_URL}/sports/${sportId}/leagues`);
-    return response.data;
-  } catch (error) {
-    console.error(`Error fetching leagues for sport ${sportId}:`, error);
-    throw error;
-  }
-};
-
-export const getLiveMatches = async (sportId: string) => {
-  try {
-    const response = await axios.get(`${API_URL}/sports/${sportId}/live-matches`);
-    return response.data;
-  } catch (error) {
-    console.error(`Error fetching live matches for sport ${sportId}:`, error);
-    throw error;
-  }
-};
-
-export const getUpcomingMatches = async (sportId: string, limit = 10) => {
-  try {
-    const response = await axios.get(`${API_URL}/sports/${sportId}/upcoming-matches?limit=${limit}`);
-    return response.data;
-  } catch (error) {
-    console.error(`Error fetching upcoming matches for sport ${sportId}:`, error);
-    throw error;
-  }
-};
-
-export const getRecentResults = async (sportId: string, limit = 10) => {
-  try {
-    const response = await axios.get(`${API_URL}/sports/${sportId}/recent-results?limit=${limit}`);
-    return response.data;
-  } catch (error) {
-    console.error(`Error fetching recent results for sport ${sportId}:`, error);
-    throw error;
-  }
-};
-
-export const getFeaturedMatches = async (sportId?: string) => {
-  try {
-    const url = sportId 
-      ? `${API_URL}/sports/featured-matches?sportId=${sportId}`
-      : `${API_URL}/sports/featured-matches`;
-    const response = await axios.get(url);
-    return response.data;
-  } catch (error) {
-    console.error('Error fetching featured matches:', error);
-    throw error;
-  }
-};
-
-export const getMatchDetails = async (matchId: string) => {
-  try {
-    const response = await axios.get(`${API_URL}/matches/${matchId}`);
-    return response.data;
-  } catch (error) {
-    console.error(`Error fetching match details for ${matchId}:`, error);
-    throw error;
-  }
-};
-
-// External Cricket API calls
-export const getCurrentMatches = async () => {
-  try {
-    const response = await axios.get(`${CRICKET_API_URL}/currentMatches`, {
-      params: {
-        apikey: CRICKET_API_KEY,
-        offset: 0
-      }
-    });
-    return response.data;
-  } catch (error) {
-    console.error('Error fetching current matches from external API:', error);
-    throw error;
-  }
-};
-
-export const getMatchScorecard = async (matchId: string) => {
-  try {
-    const response = await axios.get(`${CRICKET_API_URL}/match_scorecard`, {
-      params: {
-        apikey: CRICKET_API_KEY,
-        id: matchId
-      }
-    });
-    return response.data;
-  } catch (error) {
-    console.error(`Error fetching scorecard for match ${matchId}:`, error);
-    throw error;
-  }
-};
-
-export const getMatchInfo = async (matchId: string) => {
-  try {
-    const response = await axios.get(`${CRICKET_API_URL}/match_info`, {
-      params: {
-        apikey: CRICKET_API_KEY,
-        id: matchId
-      }
-    });
-    return response.data;
-  } catch (error) {
-    console.error(`Error fetching match info for ${matchId}:`, error);
-    throw error;
-  }
-};
-
-export const getPlayerStats = async (playerId: string) => {
-  try {
-    const response = await axios.get(`${CRICKET_API_URL}/players_info`, {
-      params: {
-        apikey: CRICKET_API_KEY,
-        id: playerId
-      }
-    });
-    return response.data;
-  } catch (error) {
-    console.error(`Error fetching player stats for ${playerId}:`, error);
-    throw error;
-  }
-};
-
-export const getSeriesList = async () => {
-  try {
-    const response = await axios.get(`${CRICKET_API_URL}/series_list`, {
-      params: {
-        apikey: CRICKET_API_KEY
-      }
-    });
-    return response.data;
-  } catch (error) {
-    console.error('Error fetching series list:', error);
-    throw error;
-  }
-};
-
-export const getSeriesInfo = async (seriesId: string) => {
-  try {
-    const response = await axios.get(`${CRICKET_API_URL}/series_info`, {
-      params: {
-        apikey: CRICKET_API_KEY,
-        id: seriesId
-      }
-    });
-    return response.data;
-  } catch (error) {
-    console.error(`Error fetching series info for ${seriesId}:`, error);
-    throw error;
-  }
-};
-
-export const getSeriesMatches = async (seriesId: string) => {
-  try {
-    const response = await axios.get(`${CRICKET_API_URL}/series_matches`, {
-      params: {
-        apikey: CRICKET_API_KEY,
-        id: seriesId
-      }
-    });
-    return response.data;
-  } catch (error) {
-    console.error(`Error fetching series matches for ${seriesId}:`, error);
-    throw error;
-  }
-};
-
-export const getSeriesStats = async (seriesId: string) => {
-  try {
-    const response = await axios.get(`${CRICKET_API_URL}/series_stats`, {
-      params: {
-        apikey: CRICKET_API_KEY,
-        id: seriesId
-      }
-    });
-    return response.data;
-  } catch (error) {
-    console.error(`Error fetching series stats for ${seriesId}:`, error);
-    throw error;
-  }
-};
-
-export const getPlayerList = async () => {
-  try {
-    const response = await axios.get(`${CRICKET_API_URL}/players`, {
-      params: {
-        apikey: CRICKET_API_KEY
-      }
-    });
-    return response.data;
-  } catch (error) {
-    console.error('Error fetching player list:', error);
-    throw error;
-  }
-};
-
-export const searchPlayers = async (name: string) => {
-  try {
-    const response = await axios.get(`${CRICKET_API_URL}/players`, {
-      params: {
-        apikey: CRICKET_API_KEY,
-        search: name
-      }
-    });
-    return response.data;
-  } catch (error) {
-    console.error(`Error searching players with name ${name}:`, error);
-    throw error;
-  }
-};
-
-export const getTeamList = async () => {
-  try {
-    const response = await axios.get(`${CRICKET_API_URL}/countries`, {
-      params: {
-        apikey: CRICKET_API_KEY
-      }
-    });
-    return response.data;
-  } catch (error) {
-    console.error('Error fetching team list:', error);
-    throw error;
-  }
-};
-
-export const getTeamInfo = async (teamId: string) => {
-  try {
-    const response = await axios.get(`${CRICKET_API_URL}/countries_info`, {
-      params: {
-        apikey: CRICKET_API_KEY,
-        id: teamId
-      }
-    });
-    return response.data;
-  } catch (error) {
-    console.error(`Error fetching team info for ${teamId}:`, error);
-    throw error;
-  }
-};
-
-// Cricket News API call
-export const getCricketNews = async () => {
-  try {
-    const response = await axios.get(`${CRICKET_API_URL}/news_list`, {
-      params: {
-        apikey: CRICKET_API_KEY
-      }
-    });
-    return response.data;
-  } catch (error) {
-    console.error('Error fetching cricket news:', error);
-    throw error;
-  }
-};
-
-// Utilities for handling cricket data
-export const formatCricketScore = (inningsScore: any) => {
-  if (!inningsScore) return '';
-  return `${inningsScore.runs || 0}/${inningsScore.wickets || 0} (${inningsScore.overs || 0} ov)`;
-};
-
-export const getCricketMatchStatus = (match: any) => {
-  if (!match) return '';
-  
-  if (match.matchEnded) {
-    return match.status || 'Completed';
-  } else if (match.matchStarted) {
-    return 'In Progress';
-  } else {
-    return 'Upcoming';
-  }
 };

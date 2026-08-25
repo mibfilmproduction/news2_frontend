@@ -1,8 +1,8 @@
-import api from './api';
+import { advertisementApi, api } from '@/lib/api-client';
 import { mockAdvertisements } from '../mocks/mockData';
 
 // Environment flag to use mock data - set to false to ensure real ads are fetched
-const USE_MOCK_DATA = false; // import.meta.env.VITE_USE_MOCK_DATA === 'true' || false;
+const USE_MOCK_DATA = false;
 
 /**
  * Check if an image URL is valid and safe to use
@@ -12,7 +12,6 @@ const USE_MOCK_DATA = false; // import.meta.env.VITE_USE_MOCK_DATA === 'true' ||
 export const isValidImageUrl = (url?: string): boolean => {
   if (!url) return false;
   
-  // Check if it's a standard URL format that's safe to use
   if (url.startsWith('http://') || 
       url.startsWith('https://') || 
       url.startsWith('/') ||
@@ -20,13 +19,11 @@ export const isValidImageUrl = (url?: string): boolean => {
     return true;
   }
   
-  // Explicitly reject blob URLs which might cause issues
   if (url.startsWith('blob:')) {
     console.warn('Advertisement service: Blob URL detected and rejected:', url);
     return false;
   }
   
-  // For any other format, reject as potentially unsafe
   return false;
 };
 
@@ -37,18 +34,16 @@ export const isValidImageUrl = (url?: string): boolean => {
  * @returns URL for a fallback placeholder image
  */
 export const getFallbackImageUrl = (position?: string, title?: string): string => {
-  // Create a dynamic color based on position
   const colorMap: {[key: string]: string} = {
-    'header': '3b82f6', // blue
-    'sidebar': '10b981', // green
-    'footer': 'f59e0b', // yellow
-    'in-article': 'ef4444', // red
-    'breaking-news': '8b5cf6', // purple
-    'category-header': '6366f1' // indigo
+    'header': '3b82f6',
+    'sidebar': '10b981',
+    'footer': 'f59e0b',
+    'in-article': 'ef4444',
+    'breaking-news': '8b5cf6',
+    'category-header': '6366f1'
   };
   const color = position && colorMap[position] ? colorMap[position] : '3b82f6';
   
-  // Create a placeholder image with the ad title
   const encodedTitle = encodeURIComponent(title || 'Advertisement');
   return `https://placehold.co/600x${position === 'sidebar' ? '600' : '200'}/${color}/ffffff?text=${encodedTitle}`;
 };
@@ -59,7 +54,7 @@ export interface Advertisement {
   imageUrl: string;
   targetUrl: string;
   position: 'header' | 'sidebar' | 'footer' | 'in-article' | 'breaking-news' | 'category-header';
-  displayOnPages: string[]; // e.g., ['home', 'category', 'article']
+  displayOnPages: string[];
   startDate: string;
   endDate: string;
   isActive: boolean;
@@ -67,7 +62,7 @@ export interface Advertisement {
   clicks: number;
   createdAt: string;
   updatedAt: string;
-  publicId?: string; // Cloudinary public ID for managing uploaded images
+  publicId?: string;
 }
 
 // Cache mechanism to prevent excessive API calls
@@ -100,10 +95,8 @@ export const getAdvertisements = async (
   forceRefresh = false
 ): Promise<Advertisement[]> => {
   try {
-    // If mock data is explicitly enabled, return mock data without API call
     if (USE_MOCK_DATA) {
       console.log('Using mock advertisement data');
-      // Filter mock advertisements based on position, page, and language
       return mockAdvertisements.filter(ad => 
         ad.position === position && 
         ad.displayOnPages.includes(page)
@@ -112,9 +105,8 @@ export const getAdvertisements = async (
 
     const cacheKey = `${position}-${page}-${language}`;
     const now = Date.now();
-    const cacheValidTime = 5 * 60 * 1000; // 5 minutes
+    const cacheValidTime = 5 * 60 * 1000;
     
-    // Use cached data if available and valid
     if (
       !forceRefresh && 
       adsCache[cacheKey] && 
@@ -124,7 +116,6 @@ export const getAdvertisements = async (
       return adsCache[cacheKey].data;
     }
     
-    // Parameters for filtering ads
     const params = {
       position,
       page,
@@ -134,43 +125,31 @@ export const getAdvertisements = async (
     
     console.log(`Fetching ads for position: ${position}, page: ${page}`);
     
-    // Get advertisements from API
-    console.log(`Fetching real advertisements from API for position: ${position}, page: ${page}`);
-    
     try {
-      // Direct API fetch with minimal filtering to get ALL ads, then filter client-side
-      // This ensures we see what's actually in the database
-      const response = await api.get('/advertisements');
+      const response = await advertisementApi.getAdvertisements(params);
       
       console.log('Advertisement API full response:', response);
       
-      // More flexible response handling
       if (response.data) {
         let adsData: Advertisement[] = [];
         
         if (response.data.data && Array.isArray(response.data.data)) {
-          // Standard API response structure
           adsData = response.data.data;
           console.log('Using standard response structure (data.data)', adsData.length);
         } else if (Array.isArray(response.data)) {
-          // Direct array response
           adsData = response.data;
           console.log('Using direct array response structure', adsData.length);
         } else if (response.data.results && Array.isArray(response.data.results)) {
-          // Alternative response structure
           adsData = response.data.results;
           console.log('Using alternative response structure (data.results)');
         } else {
-          // In case the structure is completely different, log it for debugging
           console.warn('Unexpected API response structure:', response.data);
-          // Try to extract data from unknown structure
           if (response.data.advertisements) {
             adsData = Array.isArray(response.data.advertisements) ? response.data.advertisements : [response.data.advertisements];
             console.log('Extracted from custom structure (data.advertisements)');
           }
         }
         
-        // Log ALL ads for debugging purposes
         console.log('All advertisements in database:', adsData.map(ad => ({
           id: ad._id,
           title: ad.title,
@@ -179,10 +158,8 @@ export const getAdvertisements = async (
           active: ad.isActive
         })));
         
-        // Apply client-side filtering to ensure we get the right ads and prevent duplicates
         let filteredAds = [];
         
-        // First try to find exact position matches that haven't been shown before
         const exactMatches = adsData.filter(ad => {
           const adId = ad._id;
           const isMatch = ad.position === position;
@@ -191,35 +168,26 @@ export const getAdvertisements = async (
         });
         
         if (exactMatches.length > 0) {
-          // If we have exact position matches that haven't been shown, use those
           console.log(`Found ${exactMatches.length} unused exact position matches for ${position}`);
-          
-          // Take one random exact match
           const randomIndex = Math.floor(Math.random() * exactMatches.length);
           filteredAds = [exactMatches[randomIndex]];
         } else {
-          // If all exact matches have been shown or there are none, check if we should reuse already shown ads
           const allExactMatches = adsData.filter(ad => ad.position === position);
           
           if (allExactMatches.length > 0) {
             console.log(`Found ${allExactMatches.length} position matches for ${position}, but they've been shown before`);
-            // Reuse the exact matches if we've shown all ads
             const randomIndex = Math.floor(Math.random() * allExactMatches.length);
             filteredAds = [allExactMatches[randomIndex]];
           } else {
-            // If no exact matches at all, return ANY active ad that hasn't been shown
             console.log(`No exact matches for position ${position}, using any available unused ad`);
             
-            // Prioritize active ads that haven't been shown before
             const unusedActiveAds = adsData.filter(ad => ad.isActive === true && !shownAdsCache[ad._id]);
             
             if (unusedActiveAds.length > 0) {
-              // Pick a random active ad to display
               const randomIndex = Math.floor(Math.random() * unusedActiveAds.length);
               filteredAds = [unusedActiveAds[randomIndex]];
               console.log(`Selected random unused active ad: ${filteredAds[0].title} (original position: ${filteredAds[0].position})`);
             } else {
-              // If all active ads have been shown, just pick any active ad
               const activeAds = adsData.filter(ad => ad.isActive === true);
               
               if (activeAds.length > 0) {
@@ -227,7 +195,6 @@ export const getAdvertisements = async (
                 filteredAds = [activeAds[randomIndex]];
                 console.log(`All ads have been shown, reusing: ${filteredAds[0].title}`);
               } else if (adsData.length > 0) {
-                // Last resort: use any ad as fallback
                 const randomIndex = Math.floor(Math.random() * adsData.length);
                 filteredAds = [adsData[randomIndex]];
                 console.log(`No active ads available, using inactive ad as fallback: ${filteredAds[0].title}`);
@@ -236,7 +203,6 @@ export const getAdvertisements = async (
           }
         }
         
-        // Mark the ads as shown to prevent duplicates
         if (filteredAds.length > 0) {
           filteredAds.forEach(ad => {
             shownAdsCache[ad._id] = true;
@@ -244,10 +210,8 @@ export const getAdvertisements = async (
           });
         }
         
-        // Log data for debugging
         console.log(`Found ${adsData.length} total advertisements, ${filteredAds.length} matching position=${position}`);
         
-        // Update cache
         adsCache[cacheKey] = {
           data: filteredAds,
           timestamp: now
@@ -255,25 +219,19 @@ export const getAdvertisements = async (
         
         return filteredAds;
       }
-      return []; // Return empty array if no data
+      return [];
     } catch (apiError) {
       console.error('API error when fetching advertisements:', apiError);
-      // Continue to use mock data as fallback
       return [];
     }
-    
-    console.log(`No advertisements found for ${position} on ${page}`);
-    return [];
   } catch (error) {
     console.error(`Error fetching advertisements for position ${position} on ${page}:`, error);
     
-    // For debugging, check if we're getting 401 errors on the frontend
     if (error.response) {
       console.error('Response status:', error.response.status);
       console.error('Response data:', error.response.data);
     }
     
-    // Return mock data on API failure
     console.log('API failed, using mock advertisement data');
     return mockAdvertisements.filter(ad => 
       ad.position === position && 
@@ -288,16 +246,13 @@ export const getAdvertisements = async (
  */
 export const trackAdImpression = async (adId: string): Promise<void> => {
   try {
-    // Skip API call if we're in mock mode
     if (USE_MOCK_DATA) {
       console.log(`[Mock] Tracked impression for ad ${adId}`);
       return;
     }
     
-    // Try to call the real API endpoint
     await api.post(`/advertisements/${adId}/impression`);
   } catch (error) {
-    // Still log the error but don't crash
     console.error(`Error tracking ad impression for ${adId}:`, error);
     console.log(`[Fallback] Tracked impression for ad ${adId} locally only`);
   }
@@ -309,16 +264,13 @@ export const trackAdImpression = async (adId: string): Promise<void> => {
  */
 export const trackAdClick = async (adId: string): Promise<void> => {
   try {
-    // Skip API call if we're in mock mode
     if (USE_MOCK_DATA) {
       console.log(`[Mock] Tracked click for ad ${adId}`);
       return;
     }
     
-    // Try to call the real API endpoint
     await api.post(`/advertisements/${adId}/click`);
   } catch (error) {
-    // Still log the error but don't crash
     console.error(`Error tracking ad click for ${adId}:`, error);
     console.log(`[Fallback] Tracked click for ad ${adId} locally only`);
   }
@@ -331,24 +283,11 @@ export const trackAdClick = async (adId: string): Promise<void> => {
  */
 export const createAdvertisement = async (adData: Omit<Advertisement, '_id' | 'createdAt' | 'updatedAt' | 'impressions' | 'clicks'>): Promise<Advertisement> => {
   try {
-    // Get authentication token to ensure it's present
-    const token = localStorage.getItem('token') || sessionStorage.getItem('token');
-    if (!token) {
-      throw new Error('No authentication token found');
-    }
+    const response = await advertisementApi.createAdvertisement(adData);
     
-    // Make the API call with explicit headers
-    const response = await api.post('/advertisements', adData, {
-      headers: {
-        'Authorization': `Bearer ${token}`
-      }
-    });
-    
-    // Check if the data structure is as expected
     if (response.data && response.data.data) {
       return response.data.data;
     } else if (response.data) {
-      // If the API returns data directly
       return response.data;
     } else {
       throw new Error('Invalid response format from API');
@@ -364,24 +303,11 @@ export const createAdvertisement = async (adData: Omit<Advertisement, '_id' | 'c
  */
 export const updateAdvertisement = async (adId: string, adData: Partial<Advertisement>): Promise<Advertisement> => {
   try {
-    // Get authentication token to ensure it's present
-    const token = localStorage.getItem('token') || sessionStorage.getItem('token');
-    if (!token) {
-      throw new Error('No authentication token found');
-    }
+    const response = await advertisementApi.updateAdvertisement(adId, adData);
     
-    // Make the API call with explicit headers
-    const response = await api.put(`/advertisements/${adId}`, adData, {
-      headers: {
-        'Authorization': `Bearer ${token}`
-      }
-    });
-    
-    // Check if the data structure is as expected
     if (response.data && response.data.data) {
       return response.data.data;
     } else if (response.data) {
-      // If the API returns data directly
       return response.data;
     } else {
       throw new Error('Invalid response format from API');
@@ -397,18 +323,7 @@ export const updateAdvertisement = async (adId: string, adData: Partial<Advertis
  */
 export const deleteAdvertisement = async (adId: string): Promise<void> => {
   try {
-    // Get authentication token to ensure it's present
-    const token = localStorage.getItem('token') || sessionStorage.getItem('token');
-    if (!token) {
-      throw new Error('No authentication token found');
-    }
-    
-    // Make the API call with explicit headers
-    await api.delete(`/advertisements/${adId}`, {
-      headers: {
-        'Authorization': `Bearer ${token}`
-      }
-    });
+    await advertisementApi.deleteAdvertisement(adId);
   } catch (error) {
     console.error(`Error deleting advertisement ${adId}:`, error);
     throw error;
@@ -424,24 +339,12 @@ export const getAdvertisementStats = async (adId: string): Promise<{
   ctr: number;
 }> => {
   try {
-    // Get authentication token to ensure it's present
-    const token = localStorage.getItem('token') || sessionStorage.getItem('token');
-    if (!token) {
-      throw new Error('No authentication token found');
-    }
+    const response = await advertisementApi.getAdvertisementStats?.(adId) ??
+      await api.get(`/advertisements/${adId}/stats`);
     
-    // Make the API call with explicit headers
-    const response = await api.get(`/advertisements/${adId}/stats`, {
-      headers: {
-        'Authorization': `Bearer ${token}`
-      }
-    });
-    
-    // Check if the data structure is as expected
     if (response.data && response.data.data) {
       return response.data.data;
     } else if (response.data) {
-      // If the API returns data directly
       return response.data;
     } else {
       throw new Error('Invalid response format from API');

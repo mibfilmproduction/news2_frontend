@@ -8,42 +8,20 @@ import { api } from '@/lib/api-client';
  */
 export const uploadImage = async (file: File, position?: string): Promise<{ imageUrl: string; publicId: string }> => {
   try {
-    // Create a FormData object to send the file
     const formData = new FormData();
     formData.append('image', file);
     
     console.log('Uploading image to Cloudinary:', file.name, position ? `for position: ${position}` : '');
     
-    // We need to bypass the api client for FormData uploads as it's configured for JSON
-    const token = localStorage.getItem('user') ? JSON.parse(localStorage.getItem('user') || '{}').token : null;
-    const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
-    
-    const headers: HeadersInit = {};
-    if (token) {
-      headers['Authorization'] = `Bearer ${token}`;
-    }
-    
-    // Build URL with position query parameter if provided
-    let uploadUrl = `${apiUrl}/advertisements/upload-image`;
+    let uploadUrl = `${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/advertisements/upload-image`;
     if (position) {
       uploadUrl += `?position=${encodeURIComponent(position)}`;
     }
     
-    // Send the FormData directly without processing/stringifying it
-    const res = await fetch(uploadUrl, {
-      method: 'POST',
-      headers,
-      body: formData
-    });
+    const response = await api.upload(uploadUrl, formData);
     
-    if (!res.ok) {
-      throw new Error(`Server responded with ${res.status}: ${res.statusText}`);
-    }
-    
-    const response = await res.json();
     console.log('Cloudinary upload response:', response);
     
-    // Handle backend response structure
     if (response.status === 'success' && response.data) {
       return {
         imageUrl: response.data.imageUrl,
@@ -69,7 +47,6 @@ export const uploadImage = async (file: File, position?: string): Promise<{ imag
  * @returns Object with isValid flag and error message if invalid
  */
 export const validateImageFile = (file: File): { isValid: boolean; error?: string } => {
-  // Check file size (max 5MB)
   const maxSizeInBytes = 5 * 1024 * 1024;
   if (file.size > maxSizeInBytes) {
     return {
@@ -78,7 +55,6 @@ export const validateImageFile = (file: File): { isValid: boolean; error?: strin
     };
   }
   
-  // Check file type
   const allowedTypes = ['image/jpeg', 'image/png', 'image/jpg', 'image/webp'];
   if (!allowedTypes.includes(file.type)) {
     return {
