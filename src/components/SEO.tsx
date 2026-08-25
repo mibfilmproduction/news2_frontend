@@ -97,8 +97,21 @@ const SEO: React.FC<SEOProps> = ({
     // Clone the object to avoid modifying the original
     const safeObj = JSON.parse(JSON.stringify(obj, (key, value) => {
       // Handle Symbol values or other non-serializable types
-      if (typeof value === 'symbol' || (typeof value === 'object' && value !== null && !Array.isArray(value) && Object.getPrototypeOf(value) !== Object.prototype)) {
+      if (typeof value === 'symbol') {
         return String(value);
+      }
+      // Handle non-plain objects (Date, RegExp, custom classes, etc.)
+      if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
+        try {
+          // Check if it's a plain object
+          const proto = Object.getPrototypeOf(value);
+          if (proto !== Object.prototype && proto !== null) {
+            return String(value);
+          }
+        } catch {
+          // If getPrototypeOf fails (e.g., cross-realm objects), convert to string
+          return String(value);
+        }
       }
       return value;
     }));

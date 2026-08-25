@@ -40,9 +40,8 @@ export const languageStorage = {
 };
 
 export const useLanguage = () => {
-  const [language, setLanguage] = useLocalStorage<Language>('language', 
-    (import.meta.env.VITE_DEFAULT_LANGUAGE as Language) || 'hindi'
-  );
+  const defaultLanguage = (import.meta.env.VITE_DEFAULT_LANGUAGE as Language) || 'hindi';
+  const [language, setLanguage] = useLocalStorage<Language>('language', defaultLanguage);
   
   const changeLanguage = (newLanguage: Language) => {
     setLanguage(newLanguage);
