@@ -74,14 +74,23 @@ export const getLiveTvChannels = async (options: {
   if (language) params.language = language;
   if (featured !== undefined) params.featured = featured;
 
-  const response = await liveTvApi.getChannels(params);
+  const [response, externalResponse] = await Promise.all([
+    liveTvApi.getChannels(params),
+    page === 1 ? liveTvApi.getIndiaChannels({ limit, category, language }).catch(() => null) : Promise.resolve(null),
+  ]);
 
-  const data = response.data?.data || [];
-  const channels = data.map(normalizeChannel);
+  if (!response.success) throw new Error(response.message || 'Failed to load live TV channels');
+  const data = Array.isArray(response.data) ? response.data : [];
+  const externalData = externalResponse?.success && Array.isArray(externalResponse.data)
+    ? externalResponse.data
+    : [];
+  const channels = [...data, ...externalData]
+    .map(normalizeChannel)
+    .filter((channel, index, all) => all.findIndex(item => item.streamUrl === channel.streamUrl) === index);
   return {
     channels,
-    pages: response.data?.pages || Math.ceil((response.data?.count || channels.length) / limit),
-    total: response.data?.count || channels.length,
+    pages: response.pages || Math.ceil((response.count || channels.length) / limit),
+    total: (response.count || data.length) + externalData.length,
   };
 };
 
@@ -93,7 +102,7 @@ export const getLiveTvChannels = async (options: {
 export const getLiveTvChannel = async (id: string): Promise<LiveTvChannel | null> => {
   try {
     const response = await liveTvApi.getChannel(id);
-    return response.data?.data ? normalizeChannel(response.data.data) : null;
+    return response.success && response.data ? normalizeChannel(response.data) : null;
   } catch (error) {
     console.error('Error fetching live TV channel:', error);
     return null;
@@ -111,7 +120,8 @@ export const createLiveTvChannel = async (
   thumbnailFile?: File | null
 ): Promise<LiveTvChannel> => {
   const response = await liveTvApi.createChannel(buildFormData(channelData, thumbnailFile));
-  return normalizeChannel(response.data.data);
+  if (!response.success || !response.data) throw new Error(response.message || 'Failed to create channel');
+  return normalizeChannel(response.data);
 };
 
 /**
@@ -127,7 +137,7 @@ export const updateLiveTvChannel = async (
   thumbnailFile?: File | null
 ): Promise<LiveTvChannel | null> => {
   const response = await liveTvApi.updateChannel(id, buildFormData(channelData, thumbnailFile));
-  return response.data?.data ? normalizeChannel(response.data.data) : null;
+  return response.success && response.data ? normalizeChannel(response.data) : null;
 };
 
 /**
@@ -157,7 +167,7 @@ export const deleteLiveTvChannel = async (id: string): Promise<boolean> => {
  */
 export const getLiveTvCategories = async (): Promise<string[]> => {
   const response = await liveTvApi.getCategories();
-  const data = response.data?.data || [];
+  const data = Array.isArray(response.data) ? response.data : [];
   if (data.length > 0) {
     return data;
   }
@@ -169,7 +179,7 @@ export const getLiveTvCategories = async (): Promise<string[]> => {
  * This would be used to populate the database with real channels
  */
 export const fetchExternalChannels = async (): Promise<any[]> => {
-  const response = await fetch('https://iptv-org.github.io/api/channels.json');
-  if (!response.ok) throw new Error('Failed to fetch external channels');
-  return response.json();
+  const response = await liveTvApi.getIndiaChannels({ limit: 300 });
+  if (!response.success) throw new Error(response.message || 'Failed to fetch external channels');
+  return Array.isArray(response.data) ? response.data : [];
 };

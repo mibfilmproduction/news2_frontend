@@ -49,6 +49,8 @@ const Settings = () => {
   const [settings, setSettings] = useState<SettingsState>(DEFAULT_SETTINGS);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const { articlesPerPage, maintenanceMode, enableComments, requireApproval,
+    enableRegistration, enableSocialLogin, cacheTimeout } = settings;
 
   useEffect(() => {
     const fetchSettings = async () => {

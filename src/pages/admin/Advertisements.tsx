@@ -183,9 +183,9 @@ const AdminAdvertisements: React.FC = () => {
 
   // Filter advertisements based on search term and filters
   const filteredAds = advertisements?.filter(ad => {
-    let matchesSearch = ad.title.toLowerCase().includes(searchTerm.toLowerCase());
-    let matchesPosition = positionFilter === "all" || ad.position === positionFilter;
-    let matchesStatus = statusFilter === "all" || 
+    const matchesSearch = ad.title.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesPosition = positionFilter === "all" || ad.position === positionFilter;
+    const matchesStatus = statusFilter === "all" || 
       (statusFilter === "active" && ad.isActive) || 
       (statusFilter === "inactive" && !ad.isActive);
     

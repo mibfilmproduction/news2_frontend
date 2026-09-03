@@ -267,37 +267,51 @@ export const deleteMatch = async (id: string): Promise<void> => {
   }
 };
 
-// External Cricket API calls (unchanged, keep using axios)
-const CRICKET_API_URL = 'https://api.cricapi.com/v1';
-const CRICKET_API_KEY = import.meta.env.VITE_CRICKET_API_KEY || '';
-
-let axiosInstance: any = null;
-async function getAxios() {
-  if (!axiosInstance) {
-    const axiosModule = await import('axios');
-    axiosInstance = axiosModule.default;
-  }
-  return axiosInstance;
-}
-
 export const getCurrentMatches = async () => {
   try {
-    const axios = await getAxios();
-    const response = await axios.get(`${CRICKET_API_URL}/currentMatches`, {
-      params: { apikey: CRICKET_API_KEY, offset: 0 }
-    });
+    const response = await sportsApi.getCurrentCricketMatches();
+    if (!response.success) throw new Error(response.message || 'Failed to fetch current matches');
     return response.data;
-  } catch (error) {
-    console.error('Error fetching current matches from external API:', error);
-    throw error;
+  } catch (cricketError) {
+    // Key-free fallback: upcoming Indian cricket events from TheSportsDB.
+    const leaguesResponse = await sportsApi.getIndiaLeagues('Cricket');
+    const leagues = Array.isArray(leaguesResponse.data) ? leaguesResponse.data : [];
+    const eventResponses = await Promise.all(
+      leagues.slice(0, 4).map((league: any) =>
+        sportsApi.getExternalLeagueEvents(league.idLeague).catch(() => null)
+      )
+    );
+    const events = eventResponses.flatMap(response =>
+      response?.success && Array.isArray(response.data) ? response.data : []
+    );
+    if (events.length === 0) throw cricketError;
+    return {
+      status: 'success',
+      source: 'TheSportsDB',
+      data: events.map((event: any) => ({
+        id: event.idEvent,
+        name: event.strEvent,
+        matchType: event.strLeague,
+        status: event.strStatus || 'scheduled',
+        venue: event.strVenue || event.strCity || '',
+        date: event.strTimestamp || `${event.dateEvent}T${event.strTime || '00:00:00'}`,
+        teamInfo: [
+          { name: event.strHomeTeam, img: event.strHomeTeamBadge },
+          { name: event.strAwayTeam, img: event.strAwayTeamBadge },
+        ],
+        score: [],
+        series_name: event.strLeague,
+        matchStarted: false,
+        matchEnded: false,
+      })),
+    };
   }
 };
 
 export const getMatchScorecard = async (matchId: string) => {
   try {
-    const response = await axios.get(`${CRICKET_API_URL}/match_scorecard`, {
-      params: { apikey: CRICKET_API_KEY, id: matchId }
-    });
+    const response = await sportsApi.getCricketScorecard(matchId);
+    if (!response.success) throw new Error(response.message || 'Failed to fetch scorecard');
     return response.data;
   } catch (error) {
     console.error(`Error fetching scorecard for match ${matchId}:`, error);
@@ -307,9 +321,8 @@ export const getMatchScorecard = async (matchId: string) => {
 
 export const getMatchInfo = async (matchId: string) => {
   try {
-    const response = await axios.get(`${CRICKET_API_URL}/match_info`, {
-      params: { apikey: CRICKET_API_KEY, id: matchId }
-    });
+    const response = await sportsApi.getCricketMatchInfo(matchId);
+    if (!response.success) throw new Error(response.message || 'Failed to fetch match info');
     return response.data;
   } catch (error) {
     console.error(`Error fetching match info for ${matchId}:`, error);
@@ -317,12 +330,15 @@ export const getMatchInfo = async (matchId: string) => {
   }
 };
 
+const getCricketResource = async (resource: string, params: Record<string, string> = {}) => {
+  const response = await sportsApi.getCricketResource(resource, params);
+  if (!response.success) throw new Error(response.message || `Failed to fetch ${resource}`);
+  return response.data;
+};
+
 export const getPlayerStats = async (playerId: string) => {
   try {
-    const response = await axios.get(`${CRICKET_API_URL}/players_info`, {
-      params: { apikey: CRICKET_API_KEY, id: playerId }
-    });
-    return response.data;
+    return await getCricketResource('players_info', { id: playerId });
   } catch (error) {
     console.error(`Error fetching player stats for ${playerId}:`, error);
     throw error;
@@ -331,10 +347,7 @@ export const getPlayerStats = async (playerId: string) => {
 
 export const getSeriesList = async () => {
   try {
-    const response = await axios.get(`${CRICKET_API_URL}/series_list`, {
-      params: { apikey: CRICKET_API_KEY }
-    });
-    return response.data;
+    return await getCricketResource('series_list');
   } catch (error) {
     console.error('Error fetching series list:', error);
     throw error;
@@ -343,10 +356,7 @@ export const getSeriesList = async () => {
 
 export const getSeriesInfo = async (seriesId: string) => {
   try {
-    const response = await axios.get(`${CRICKET_API_URL}/series_info`, {
-      params: { apikey: CRICKET_API_KEY, id: seriesId }
-    });
-    return response.data;
+    return await getCricketResource('series_info', { id: seriesId });
   } catch (error) {
     console.error(`Error fetching series info for ${seriesId}:`, error);
     throw error;
@@ -355,10 +365,7 @@ export const getSeriesInfo = async (seriesId: string) => {
 
 export const getSeriesMatches = async (seriesId: string) => {
   try {
-    const response = await axios.get(`${CRICKET_API_URL}/series_matches`, {
-      params: { apikey: CRICKET_API_KEY, id: seriesId }
-    });
-    return response.data;
+    return await getCricketResource('series_matches', { id: seriesId });
   } catch (error) {
     console.error(`Error fetching series matches for ${seriesId}:`, error);
     throw error;
@@ -367,10 +374,7 @@ export const getSeriesMatches = async (seriesId: string) => {
 
 export const getSeriesStats = async (seriesId: string) => {
   try {
-    const response = await axios.get(`${CRICKET_API_URL}/series_stats`, {
-      params: { apikey: CRICKET_API_KEY, id: seriesId }
-    });
-    return response.data;
+    return await getCricketResource('series_stats', { id: seriesId });
   } catch (error) {
     console.error(`Error fetching series stats for ${seriesId}:`, error);
     throw error;
@@ -379,10 +383,7 @@ export const getSeriesStats = async (seriesId: string) => {
 
 export const getPlayerList = async () => {
   try {
-    const response = await axios.get(`${CRICKET_API_URL}/players`, {
-      params: { apikey: CRICKET_API_KEY }
-    });
-    return response.data;
+    return await getCricketResource('players');
   } catch (error) {
     console.error('Error fetching player list:', error);
     throw error;
@@ -391,10 +392,7 @@ export const getPlayerList = async () => {
 
 export const searchPlayers = async (name: string) => {
   try {
-    const response = await axios.get(`${CRICKET_API_URL}/players`, {
-      params: { apikey: CRICKET_API_KEY, search: name }
-    });
-    return response.data;
+    return await getCricketResource('players', { search: name });
   } catch (error) {
     console.error(`Error searching players with name ${name}:`, error);
     throw error;
@@ -403,10 +401,7 @@ export const searchPlayers = async (name: string) => {
 
 export const getTeamList = async () => {
   try {
-    const response = await axios.get(`${CRICKET_API_URL}/countries`, {
-      params: { apikey: CRICKET_API_KEY }
-    });
-    return response.data;
+    return await getCricketResource('countries');
   } catch (error) {
     console.error('Error fetching team list:', error);
     throw error;
@@ -415,10 +410,7 @@ export const getTeamList = async () => {
 
 export const getTeamInfo = async (teamId: string) => {
   try {
-    const response = await axios.get(`${CRICKET_API_URL}/countries_info`, {
-      params: { apikey: CRICKET_API_KEY, id: teamId }
-    });
-    return response.data;
+    return await getCricketResource('countries_info', { id: teamId });
   } catch (error) {
     console.error(`Error fetching team info for ${teamId}:`, error);
     throw error;
@@ -427,10 +419,7 @@ export const getTeamInfo = async (teamId: string) => {
 
 export const getCricketNews = async () => {
   try {
-    const response = await axios.get(`${CRICKET_API_URL}/news_list`, {
-      params: { apikey: CRICKET_API_KEY }
-    });
-    return response.data;
+    return await getCricketResource('news_list');
   } catch (error) {
     console.error('Error fetching cricket news:', error);
     throw error;

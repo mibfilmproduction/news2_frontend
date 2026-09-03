@@ -129,7 +129,7 @@ const AdvertisementForm: React.FC<AdvertisementFormProps> = ({
   // Handle multi-select changes
   const handlePageSelection = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const options = e.target.options;
-    const selectedPages = [];
+    const selectedPages: string[] = [];
     
     for (let i = 0; i < options.length; i++) {
       if (options[i].selected) {

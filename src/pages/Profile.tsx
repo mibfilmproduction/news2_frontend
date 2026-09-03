@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
-import { userApi } from "@/lib/api";
+import { userApi } from "@/lib/api-client";
 import { useToast } from "@/hooks/use-toast";
 import SEO from "@/components/SEO";
 import { Button } from "@/components/ui/button";

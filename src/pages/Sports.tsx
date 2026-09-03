@@ -4,10 +4,7 @@ import SEO from '../components/SEO';
 import { 
   getAllSports, 
   getFeaturedMatches, 
-  getCurrentMatches,
-  SAMPLE_SPORTS,
-  SAMPLE_FEATURED_MATCHES,
-  SAMPLE_LIVE_MATCHES
+  getCurrentMatches
 } from '../services/sportsService';
 import { Spinner } from '../components/Spinner';
 import ErrorDisplay from '../components/shared/ErrorDisplay';
@@ -55,15 +52,10 @@ const Sports = () => {
             } else if (apiSportsData.length > 0) {
               setActiveSport(apiSportsData[0]._id);
             }
-          } else {
-            console.log('API returned non-array data, using sample data instead');
-            setSports(SAMPLE_SPORTS);
-            setActiveSport(SAMPLE_SPORTS[0]._id);
-          }
+          } else throw new Error('Invalid sports response');
         } catch (apiErr) {
-          console.log('Sports API request failed, using sample data instead', apiErr);
-          setSports(SAMPLE_SPORTS);
-          setActiveSport(SAMPLE_SPORTS[0]._id);
+          console.error(apiErr);
+          throw new Error('Unable to load sports from the server');
         }
         
         // Fetch featured matches
@@ -71,13 +63,10 @@ const Sports = () => {
           const featuredData = await getFeaturedMatches();
           if (Array.isArray(featuredData)) {
             setFeaturedMatches(featuredData);
-          } else {
-            console.log('API returned non-array data for featured matches, using sample data instead');
-            setFeaturedMatches(SAMPLE_FEATURED_MATCHES);
-          }
+          } else throw new Error('Invalid featured matches response');
         } catch (apiErr) {
-          console.log('Featured matches API request failed, using sample data instead', apiErr);
-          setFeaturedMatches(SAMPLE_FEATURED_MATCHES);
+          console.error(apiErr);
+          throw new Error('Unable to load featured matches');
         }
         
         // Fetch live cricket matches
@@ -85,13 +74,10 @@ const Sports = () => {
           const liveData = await getCurrentMatches();
           if (liveData && Array.isArray(liveData.data)) {
             setLiveMatches(liveData.data);
-          } else {
-            console.log('API returned invalid data for live matches, using sample data instead');
-            setLiveMatches(SAMPLE_LIVE_MATCHES);
-          }
+          } else setLiveMatches([]);
         } catch (apiErr) {
-          console.log('Live matches API request failed, using sample data instead', apiErr);
-          setLiveMatches(SAMPLE_LIVE_MATCHES);
+          console.error('Live matches API request failed', apiErr);
+          setLiveMatches([]);
         }
         
       } catch (err: any) {

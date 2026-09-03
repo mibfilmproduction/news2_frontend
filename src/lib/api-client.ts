@@ -69,8 +69,12 @@ async function handleResponse<T>(response: Response): Promise<ApiResponse<T>> {
     };
   }
 
-  if (!('success' in data)) {
-    data.success = response.ok;
+  // Normalize legacy endpoints which return a raw array/document instead of
+  // the application's { success, data } envelope.
+  if (Array.isArray(data)) {
+    data = { success: response.ok, data };
+  } else if (data && typeof data === 'object' && !('success' in data)) {
+    data = { success: response.ok, data, ...data };
   }
 
   if (!response.ok) {
@@ -107,6 +111,7 @@ export const api = {
     const timeoutId = setTimeout(() => controller.abort(), timeout);
 
     try {
+      console.log('API Request:', { url, method: fetchOptions.method, headers: { ...createHeaders(requireAuth), ...fetchOptions.headers }, body: fetchOptions.body });
       const response = await fetch(url, {
         ...fetchOptions,
         headers: {
@@ -132,53 +137,71 @@ export const api = {
   },
 
   get<T = any>(endpoint: string, params?: Record<string, string | number | boolean | undefined>, options?: Omit<RequestOptions, 'params' | 'method' | 'body'>): Promise<ApiResponse<T>> {
-    return this.request<T>(endpoint, { ...options, method: 'GET', params });
+    return this.request(endpoint, { ...options, method: 'GET', params }) as Promise<ApiResponse<T>>;
   },
 
   post<T = any>(endpoint: string, data?: any, options?: Omit<RequestOptions, 'params' | 'method' | 'body'>): Promise<ApiResponse<T>> {
-    return this.request<T>(endpoint, {
+    return this.request(endpoint, {
       ...options,
       method: 'POST',
       body: data instanceof FormData ? data : JSON.stringify(data),
       headers: data instanceof FormData ? undefined : { 'Content-Type': 'application/json' },
-    });
+    }) as Promise<ApiResponse<T>>;
   },
 
   put<T = any>(endpoint: string, data?: any, options?: Omit<RequestOptions, 'params' | 'method' | 'body'>): Promise<ApiResponse<T>> {
-    return this.request<T>(endpoint, {
+    return this.request(endpoint, {
       ...options,
       method: 'PUT',
       body: data instanceof FormData ? data : JSON.stringify(data),
       headers: data instanceof FormData ? undefined : { 'Content-Type': 'application/json' },
-    });
+    }) as Promise<ApiResponse<T>>;
   },
 
   patch<T = any>(endpoint: string, data?: any, options?: Omit<RequestOptions, 'params' | 'method' | 'body'>): Promise<ApiResponse<T>> {
-    return this.request<T>(endpoint, {
+    return this.request(endpoint, {
       ...options,
       method: 'PATCH',
       body: data instanceof FormData ? data : JSON.stringify(data),
       headers: data instanceof FormData ? undefined : { 'Content-Type': 'application/json' },
-    });
+    }) as Promise<ApiResponse<T>>;
   },
 
   delete<T = any>(endpoint: string, options?: Omit<RequestOptions, 'params' | 'method' | 'body'>): Promise<ApiResponse<T>> {
-    return this.request<T>(endpoint, { ...options, method: 'DELETE' });
+    return this.request(endpoint, { ...options, method: 'DELETE' }) as Promise<ApiResponse<T>>;
   },
 
   upload<T = any>(endpoint: string, formData: FormData, options?: Omit<RequestOptions, 'params' | 'method' | 'body' | 'headers'>): Promise<ApiResponse<T>> {
-    return this.request<T>(endpoint, {
+    return this.request(endpoint, {
       ...options,
       method: 'POST',
       body: formData,
       headers: {},
-    });
+    }) as Promise<ApiResponse<T>>;
+  },
+
+  updateWithUpload<T = any>(endpoint: string, formData: FormData, options?: Omit<RequestOptions, 'params' | 'method' | 'body' | 'headers'>): Promise<ApiResponse<T>> {
+    return this.request(endpoint, { ...options, method: 'PUT', body: formData, headers: {} }) as Promise<ApiResponse<T>>;
   },
 };
 
 export const authApi = {
-  login: (credentials: { email: string; password: string }) => api.post<{ user: any; token: string }>('/auth/login', credentials, { requireAuth: false }),
-  register: (userData: { name: string; email: string; password: string; role?: string }) => api.post<{ user: any; token: string }>('/auth/register', userData, { requireAuth: false }),
+  login: (credentials: { email: string; password: string }) => 
+    api.post<{ user: any; token: string }>('/auth/login', credentials, { requireAuth: false }).then(res => {
+      // Backend returns { success: true, user: { ...token } }
+      // Transform to expected format
+      if (res.success && res.user) {
+        return { success: true, data: { user: res.user, token: res.user.token } };
+      }
+      return res;
+    }),
+  register: (userData: { name: string; email: string; password: string; role?: string }) => 
+    api.post<{ user: any; token: string }>('/auth/register', userData, { requireAuth: false }).then(res => {
+      if (res.success && res.user) {
+        return { success: true, data: { user: res.user, token: res.user.token } };
+      }
+      return res;
+    }),
   getCurrentUser: () => api.get<{ user: any }>('/auth/me'),
   forgotPassword: (email: string) => api.post<{ resetToken: string }>('/auth/forgotpassword', { email }, { requireAuth: false }),
   resetPassword: (resetToken: string, password: string) => api.put<{ message: string }>(`/auth/resetpassword/${resetToken}`, { password }, { requireAuth: false }),
@@ -238,9 +261,10 @@ export const videoApi = {
 
 export const liveTvApi = {
   getChannels: (params?: any) => api.get<any[]>('/live-tv', params, { requireAuth: false }),
+  getIndiaChannels: (params?: any) => api.get<any[]>('/live-tv/external/india', params, { requireAuth: false }),
   getChannel: (id: string) => api.get<any>(`/live-tv/${id}`, {}, { requireAuth: false }),
   createChannel: (channelData: FormData) => api.upload<any>('/live-tv', channelData),
-  updateChannel: (id: string, channelData: FormData) => api.upload<any>(`/live-tv/${id}`, channelData),
+  updateChannel: (id: string, channelData: FormData) => api.put<any>(`/live-tv/${id}`, channelData),
   deleteChannel: (id: string) => api.delete<null>(`/live-tv/${id}`),
   toggleFeatured: (id: string) => api.put<any>(`/live-tv/${id}/toggle-featured`, {}),
   getCategories: () => api.get<string[]>('/live-tv/categories', {}, { requireAuth: false }),
@@ -252,6 +276,12 @@ export const sportsApi = {
   createSport: (sportData: any) => api.post<any>('/sports', sportData),
   updateSport: (id: string, sportData: any) => api.put<any>(`/sports/${id}`, sportData),
   deleteSport: (id: string) => api.delete<null>(`/sports/${id}`),
+  getIndiaLeagues: (sport?: string) => api.get<any[]>('/sports/external/india/leagues', { sport }, { requireAuth: false }),
+  getExternalLeagueEvents: (leagueId: string, direction: 'next' | 'past' = 'next') => api.get<any[]>(`/sports/external/leagues/${leagueId}/events`, { direction }, { requireAuth: false }),
+  getCurrentCricketMatches: () => api.get<any>('/sports/cricket/current', {}, { requireAuth: false }),
+  getCricketScorecard: (matchId: string) => api.get<any>(`/sports/cricket/match/${matchId}/scorecard`, {}, { requireAuth: false }),
+  getCricketMatchInfo: (matchId: string) => api.get<any>(`/sports/cricket/match/${matchId}/info`, {}, { requireAuth: false }),
+  getCricketResource: (resource: string, params?: any) => api.get<any>(`/sports/cricket/provider/${resource}`, params, { requireAuth: false }),
   getLeagues: (params?: any) => api.get<any[]>('/leagues', params, { requireAuth: false }),
   getLeague: (id: string) => api.get<any>(`/leagues/${id}`, {}, { requireAuth: false }),
   createLeague: (leagueData: any) => api.post<any>('/leagues', leagueData),
@@ -283,15 +313,16 @@ export const advertisementApi = {
   trackImpression: (id: string) => api.post<any>(`/advertisements/${id}/impression`, {}, { requireAuth: false }),
   trackClick: (id: string) => api.post<any>(`/advertisements/${id}/click`, {}, { requireAuth: false }),
   getStats: (id: string) => api.get<any>(`/advertisements/${id}/stats`),
+  getAdvertisementStats: (id: string) => api.get<any>(`/advertisements/${id}/stats`),
 };
 
 export const careerApi = {
-  getCareers: (params?: any) => api.get<any[]>('/careers', params, { requireAuth: false }),
-  getCareer: (id: string) => api.get<any>(`/careers/${id}`, {}, { requireAuth: false }),
-  createCareer: (careerData: any) => api.post<any>('/careers', careerData),
-  updateCareer: (id: string, careerData: any) => api.put<any>(`/careers/${id}`, careerData),
-  deleteCareer: (id: string) => api.delete<null>(`/careers/${id}`),
-  applyToCareer: (id: string, applicationData: FormData) => api.upload<any>(`/careers/${id}/apply`, applicationData),
+  getCareers: (params?: any) => api.get<any[]>('/careers/jobs', params, { requireAuth: false }),
+  getCareer: (id: string) => api.get<any>(`/careers/jobs/${id}`, {}, { requireAuth: false }),
+  createCareer: (careerData: any) => api.post<any>('/careers/jobs', careerData),
+  updateCareer: (id: string, careerData: any) => api.put<any>(`/careers/jobs/${id}`, careerData),
+  deleteCareer: (id: string) => api.delete<null>(`/careers/jobs/${id}`),
+  applyToCareer: (id: string, applicationData: FormData) => api.upload<any>(`/careers/jobs/${id}/apply`, applicationData),
   getApplications: (params?: any) => api.get<any[]>('/careers/applications', params),
   updateApplicationStatus: (id: string, status: string) => api.patch<any>(`/careers/applications/${id}/status`, { status }),
   getStats: () => api.get<any>('/careers/stats'),
@@ -300,18 +331,21 @@ export const careerApi = {
 export const newsletterApi = {
   subscribe: (email: string) => api.post<{ message: string }>('/newsletter/subscribe', { email }, { requireAuth: false }),
   unsubscribe: (email: string) => api.post<{ message: string }>('/newsletter/unsubscribe', { email }, { requireAuth: false }),
-  getSubscribers: (params?: any) => api.get<any[]>('/newsletter', params),
+  getSubscribers: (params?: any) => api.get<any[]>('/newsletter/subscribers', params),
 };
 
 export const siteSettingApi = {
-  getSettings: () => api.get<any>('/settings', {}, { requireAuth: false }),
-  getSetting: (key: string) => api.get<any>(`/settings/${key}`, {}, { requireAuth: false }),
-  updateSetting: (key: string, value: any) => api.put<any>(`/settings/${key}`, { value }),
+  getSettings: () => api.get<any>('/settings'),
+  getPublicSettings: () => api.get<any>('/settings/public', {}, { requireAuth: false }),
+  updateSettings: (group: string, settings: any) => api.put<any>('/settings', { group, settings }),
+  resetSettings: () => api.delete<any>('/settings'),
 };
 
 export const analyticsApi = {
-  trackEvent: (eventData: any) => api.post<any>('/analytics/track', eventData, { requireAuth: false }),
-  getAnalytics: (params?: any) => api.get<any>('/analytics', params),
+  getOverview: () => api.get<any>('/analytics/overview'),
+  getArticleViews: (params?: any) => api.get<any>('/analytics/articles/views', params),
+  getCategoryPerformance: () => api.get<any>('/analytics/categories/performance'),
+  getUserActivity: () => api.get<any>('/analytics/users/activity'),
 };
 
 export const contactApi = {
@@ -336,8 +370,7 @@ export const reelApi = {
 };
 
 export const instagramApi = {
-  getPosts: (params?: any) => api.get<any[]>('/instagram/posts', params, { requireAuth: false }),
-  syncPosts: () => api.post<{ message: string }>('/instagram/sync', {}, { requireAuth: false }),
+  getReels: (params?: any) => api.get<any[]>('/instagram/reels', params, { requireAuth: false }),
 };
 
 export default api;

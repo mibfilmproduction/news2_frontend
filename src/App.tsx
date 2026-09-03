@@ -36,6 +36,7 @@ const ForgotPassword = lazy(() => import("./pages/ForgotPassword"));
 const ResetPassword = lazy(() => import("./pages/ResetPassword"));
 const Dashboard = lazy(() => import("./pages/admin/Dashboard"));
 const Articles = lazy(() => import("./pages/admin/Articles"));
+const ArticleEditor = lazy(() => import("./pages/admin/ArticleEditor"));
 const Categories = lazy(() => import("./pages/admin/Categories"));
 const Advertisements = lazy(() => import("./pages/admin/Advertisements"));
 const Users = lazy(() => import("./pages/admin/Users"));
@@ -92,6 +93,7 @@ const AppRoutes = () => {
           <Route path="videos" element={<Videos />} />
           <Route path="live-tv" element={<LiveTv />} />
           {/* Sports routes removed */}
+          <Route path="category/cricket" element={<Navigate to="/sports/cricket" replace />} />
           <Route path="category/:slug" element={<CategoryPage />} />
           <Route path="article/:slug" element={<ArticleDetail />} />
           <Route path="world" element={<World />} />
@@ -121,11 +123,13 @@ const AppRoutes = () => {
         </Route>
 
         {/* Admin routes - protected with admin role */}
-        <Route element={<ProtectedRoute allowedRoles={['admin', 'editor']} />}>
+<Route element={<ProtectedRoute allowedRoles={['admin', 'editor']} />}>
           <Route path="/admin" element={<AdminLayout />}>
-          <Route index element={<AdminOnlyPage><Dashboard /></AdminOnlyPage>} />
-          <Route path="articles" element={<Articles />} />
-          <Route path="categories" element={<AdminOnlyPage><Categories /></AdminOnlyPage>} />
+            <Route index element={<AdminOnlyPage><Dashboard /></AdminOnlyPage>} />
+            <Route path="articles" element={<Articles />} />
+            <Route path="articles/new" element={<ArticleEditor />} />
+            <Route path="articles/:id/edit" element={<ArticleEditor />} />
+            <Route path="categories" element={<AdminOnlyPage><Categories /></AdminOnlyPage>} />
           <Route path="categories/:categoryId" element={<AdminOnlyPage><CategoryDetail /></AdminOnlyPage>} />
           <Route path="advertisements" element={<AdminOnlyPage><Advertisements /></AdminOnlyPage>} />
           <Route path="users" element={<AdminOnlyPage><Users /></AdminOnlyPage>} />
@@ -151,7 +155,7 @@ function App() {
   return (
     <ErrorBoundary>
       <HelmetProvider>
-        <Router>
+        <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
           <ScrollToTop /> {/* This ensures page scrolls to top on route change */}
           <AuthProvider>
             <WebVitalsTracker />

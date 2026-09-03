@@ -9,6 +9,7 @@ interface User {
   role: 'user' | 'editor' | 'admin';
   avatar?: string;
   bio?: string;
+  token?: string;
 }
 
 interface RegisterData {
@@ -16,7 +17,6 @@ interface RegisterData {
   email: string;
   password: string;
   confirmPassword: string;
-  role: 'user' | 'editor' | 'admin';
 }
 
 interface AuthContextType {
@@ -114,11 +114,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setIsLoading(true);
       setError(null);
 
+      console.log('useAuth.login: Calling authApi.login with', { email, passwordLength: password.length });
+
       const response = await authApi.login({ email, password });
 
+      console.log('useAuth.login: Response from authApi.login:', { success: response.success, hasData: !!response.data, dataKeys: response.data ? Object.keys(response.data) : null, message: response.message });
+
       if (response.success && response.data) {
-        const { user, token } = response.data;
-        storeAuthData(user, token);
+        // Backend returns user with token inside it
+        const userData = response.data.user;
+        const token = userData.token;
+        console.log('useAuth.login: Extracted userData:', { hasUser: !!userData, hasToken: !!token });
+        storeAuthData(userData, token);
         return { success: true };
       } else {
         const errorMessage = response.message || 'Login failed';
@@ -170,22 +177,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return { success: false, message: 'Please enter a valid email address' };
       }
 
-      // Default to 'user' role if none specified
+      // Send only name, email, password to backend (role is forced to 'user' by backend)
       const registrationData = {
-        ...userData,
-        role: userData.role || 'user',
+        name: userData.name,
+        email: userData.email,
+        password: userData.password,
       };
-
-      // Admin role requires special authorization - backend will validate
-      if (registrationData.role === 'admin') {
-        console.log('Attempting to register with admin role - backend will verify');
-      }
 
       const response = await authApi.register(registrationData);
 
       if (response.success && response.data) {
-        const { user, token } = response.data;
-        storeAuthData(user, token);
+        const userData = response.data.user;
+        const token = userData.token;
+        storeAuthData(userData, token);
         return { success: true };
       } else {
         const errorMsg = response.message || 'Registration failed';
@@ -254,11 +258,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       if (response.success) {
         // If the server returns updated user data, use it
-        if (response.data) {
-          const updatedUser = response.data;
+        if (response.data && response.data.user) {
+          const updatedUser = response.data.user;
           localStorage.setItem('user', JSON.stringify(updatedUser));
           sessionStorage.setItem('user', JSON.stringify(updatedUser));
           setUser(updatedUser);
+        } else if (response.data) {
+          // Fallback for backward compatibility
+          localStorage.setItem('user', JSON.stringify(response.data));
+          sessionStorage.setItem('user', JSON.stringify(response.data));
+          setUser(response.data);
         } else {
           // Otherwise use the stored user data
           setUser(JSON.parse(storedUser));

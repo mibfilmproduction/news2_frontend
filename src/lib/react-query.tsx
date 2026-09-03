@@ -32,9 +32,9 @@ export function QueryProvider({ children }: { children: React.ReactNode }) {
 
 // Generic API query hook
 export function useApiQuery<T>(
-  queryKey: string[], 
+  queryKey: readonly unknown[], 
   queryFn: () => Promise<T>,
-  options?: Omit<UseQueryOptions<T, Error, T, string[]>, 'queryKey' | 'queryFn'>
+  options?: Omit<UseQueryOptions<T, Error, T, readonly unknown[]>, 'queryKey' | 'queryFn'>
 ) {
   return useQuery<T, Error>({
     queryKey,

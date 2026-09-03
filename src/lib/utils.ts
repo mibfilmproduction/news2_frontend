@@ -19,9 +19,9 @@ export function getImageUrl(imagePath: string | undefined | null, fallbackImage:
     return imagePath;
   }
 
-  // For local paths, prepend the API URL
-  // This method supports both storage types during transition to Cloudinary
-  return `${import.meta.env.VITE_API_URL}/${imagePath.startsWith('/') ? imagePath.slice(1) : imagePath}`;
+  // For local paths, use the MEDIA_URL (uploads directory), not API_URL
+  const mediaUrl = import.meta.env.VITE_MEDIA_URL || 'http://localhost:5003/uploads';
+  return `${mediaUrl}/${imagePath.startsWith('/') ? imagePath.slice(1) : imagePath}`;
 }
 
 /**

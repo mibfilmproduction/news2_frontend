@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
-import { fetchInstagramReels, transformInstagramToReel } from '@/lib/instagram-api';
+import { transformInstagramToReel } from '@/lib/instagram-api';
+import { api } from '@/lib/api-client';
 import { Loader2, Instagram, ExternalLink } from 'lucide-react';
 import { Button } from './ui/button';
 import { Card, CardContent, CardFooter } from './ui/card';
@@ -93,27 +94,8 @@ const InstagramReels: React.FC<InstagramReelsProps> = ({
     try {
       setLoading(true);
       
-      // Get your Instagram access token from environment variables
-      const accessToken = import.meta.env.VITE_INSTAGRAM_ACCESS_TOKEN;
-      
-      // Check if we have a real token or just a placeholder
-      if (!accessToken || accessToken === 'DUMMY_TOKEN') {
-        console.log('Using sample Instagram reels data due to missing/invalid token');
-        // Use sample data for demonstration
-        setTimeout(() => {
-          setReels(sampleInstagramReels.slice(0, limit));
-          setHasMore(false);
-          setLoading(false);
-        }, 1000); // Simulate loading delay
-        return;
-      }
-      
-      // If we have a valid token, try to fetch real data
-      const response = await fetchInstagramReels({
-        accessToken,
-        limit,
-        after,
-      });
+      // Tokens remain on the backend; the browser only calls our API.
+      const response = await api.get('/instagram/reels', { limit, after }, { requireAuth: false });
       
       if (response.success && response.data) {
         // Transform Instagram media to match our application format
@@ -127,8 +109,8 @@ const InstagramReels: React.FC<InstagramReelsProps> = ({
         setHasMore(!!response.pagination?.hasNextPage);
       } else {
         // Fall back to sample data on error
-        console.warn('Failed to load Instagram reels, using sample data:', response.message);
-        setReels(sampleInstagramReels.slice(0, limit));
+        setError(response.message || 'Failed to load Instagram reels');
+        setReels([]);
         setHasMore(false);
       }
     } catch (err) {

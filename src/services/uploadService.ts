@@ -22,15 +22,10 @@ export const uploadImage = async (file: File, position?: string): Promise<{ imag
     
     console.log('Cloudinary upload response:', response);
     
-    if (response.status === 'success' && response.data) {
+    if (response.success && response.data) {
       return {
         imageUrl: response.data.imageUrl,
         publicId: response.data.publicId
-      };
-    } else if (response.success && response.data) {
-      return {
-        imageUrl: response.data.imageUrl,
-        publicId: response.data.publicId || ''
       };
     }
     

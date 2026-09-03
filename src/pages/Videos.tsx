@@ -135,11 +135,9 @@ const Videos = () => {
         setTotalPages(response.totalPages);
       } catch (err) {
         console.error('Error fetching videos:', err);
-        setError('Failed to load videos from server. Using local content.');
-
-        // Use fallback videos from our predefined data
-        setVideos(fallbackVideos[language] as unknown as VideoType[]);
-        setTotalPages(1); // Only one page for fallback videos
+        setError('Failed to load videos from the server. Please try again.');
+        setVideos([]);
+        setTotalPages(1);
       } finally {
         setLoading(false);
       }

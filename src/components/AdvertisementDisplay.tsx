@@ -14,7 +14,7 @@ interface AdvertisementDisplayProps {
 }
 
 // Track which ad positions have been shown using this global variable
-let shownAdPositions = new Set<string>();
+const shownAdPositions = new Set<string>();
 
 const AdvertisementDisplay: React.FC<AdvertisementDisplayProps> = ({ 
   position,
@@ -182,8 +182,11 @@ const AdvertisementDisplay: React.FC<AdvertisementDisplayProps> = ({
   }
   
   // Get random ad from available advertisements
-  const randomIndex = Math.floor(Math.random() * advertisements.length);
-  const ad = advertisements[randomIndex];
+  const randomIndex = Math.floor(Math.random() * advertisements!.length);
+  const ad = advertisements![randomIndex];
+
+  // Ensure targetUrl has a fallback
+  const targetUrl = ad.targetUrl || '#';
   
   // Use the utility functions imported from advertisementService.ts
 
@@ -198,7 +201,7 @@ const AdvertisementDisplay: React.FC<AdvertisementDisplayProps> = ({
   return (
     <div className={`advertisement-container ${getPositionClasses(position)} ${className} relative`}>
       <a 
-        href={ad.targetUrl}
+        href={targetUrl}
         target="_blank"
         rel="noopener noreferrer"
         onClick={() => handleAdClick(ad)}

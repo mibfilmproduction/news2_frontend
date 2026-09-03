@@ -1,0 +1,32 @@
+# Mibnews
+
+> Delivering the latest breaking news and top stories across politics, entertainment, sports, and business from India and around the world, in Hindi and English.
+
+Mibnews is a bilingual Hindi and English digital news publisher covering national and international news, sports, entertainment, breaking news, live TV, and short-form video.
+
+## Sections
+
+- [Latest News](https://www.mibnews.in/latest)
+- [Breaking News](https://www.mibnews.in/breaking)
+- [National News](https://www.mibnews.in/national)
+- [World News](https://www.mibnews.in/world)
+- [Entertainment](https://www.mibnews.in/entertainment)
+- [Sports](https://www.mibnews.in/sports)
+- [Videos](https://www.mibnews.in/videos)
+- [Live TV](https://www.mibnews.in/live-tv)
+- [Short Posts](https://www.mibnews.in/short-posts)
+- [Reels](https://www.mibnews.in/reels)
+
+## About and legal
+
+- [Contact](https://www.mibnews.in/contact)
+- [Careers](https://www.mibnews.in/career)
+- [Privacy Policy](https://www.mibnews.in/privacy-policy)
+
+Article pages at `/article/:slug` are the site's primary citable content units.
+
+## Publisher
+
+- Domain: https://www.mibnews.in
+- Languages: Hindi and English
+- Media: Articles, live streams, videos, and short updates

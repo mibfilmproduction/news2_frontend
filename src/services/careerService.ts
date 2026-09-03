@@ -60,7 +60,7 @@ export const getAllJobs = async (params?: {
       return { jobs: [], total: 0, page: 1, limit: 10 };
     }
 
-    const jobs = Array.isArray(response.data) ? response.data : response.data.data || [];
+    const jobs = Array.isArray(response.data) ? response.data : response.data.jobs || response.data.data || [];
 
     return {
       jobs,
@@ -78,10 +78,10 @@ export const getAllJobs = async (params?: {
 export const getJob = async (idOrSlug: string) => {
   try {
     const response = await careerApi.getCareer(idOrSlug);
-    if (!response.success || !response.data) {
+    if (!response.success || (!response.data && !(response as any).application)) {
       throw new Error('Job not found');
     }
-    return response.data;
+    return response.data || (response as any).application;
   } catch (error) {
     console.error(`Error fetching job ${idOrSlug}:`, error);
     throw error;
@@ -189,7 +189,7 @@ export const getJobApplications = async (params?: {
     if (params?.limit) queryParams.limit = params.limit;
 
     const response = await careerApi.getApplications?.(queryParams) ?? 
-      await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/careers/applications?${new URLSearchParams(queryParams).toString()}`, {
+      await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/careers/applications?${new URLSearchParams(Object.entries(queryParams).map(([key, value]) => [key, String(value)])).toString()}`, {
         headers: { 'Authorization': `Bearer ${localStorage.getItem('token') || ''}` }
       }).then(r => r.json());
 
@@ -197,7 +197,7 @@ export const getJobApplications = async (params?: {
       return { applications: [], total: 0, page: 1, limit: 10 };
     }
 
-    const applications = Array.isArray(response.data) ? response.data : response.data.data || [];
+    const applications = Array.isArray(response.data) ? response.data : response.data.applications || response.data.data || [];
 
     return {
       applications,

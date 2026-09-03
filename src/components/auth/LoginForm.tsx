@@ -9,7 +9,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Loader2 } from "lucide-react";
-import { authApi } from "@/lib/api";
+import { authApi } from "@/lib/api-client";
 import logo from '@/assets/logo.png';
 
 const LoginForm = () => {
@@ -115,6 +115,8 @@ const LoginForm = () => {
     }
     
     setIsLoading(true);
+
+    console.log('LoginForm: Attempting login with', { email: trimmedEmail, passwordLength: password.length });
 
     try {
       // Make a direct API call first to capture detailed debug info

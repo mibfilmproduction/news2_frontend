@@ -77,7 +77,7 @@ const enrichCommentsWithArticleInfo = async (comments: CommentType[]): Promise<C
     try {
       // Ensure articleId is a valid string before making the API call
       if (typeof articleId === 'string' && articleId.trim() !== '') {
-        const response = await api.get(`/articles/${articleId}`);
+        const response = await api.get(`/news/${articleId}`);
         if (response.success && response.data) {
           articleDetails[articleId] = response.data;
         }

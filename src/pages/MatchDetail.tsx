@@ -5,8 +5,6 @@ import {
   getMatchDetails, 
   getMatchScorecard, 
   getMatchInfo, 
-  SAMPLE_MATCH_INFO,
-  SAMPLE_SCORECARD,
   COUNTRY_FLAGS
 } from '../services/sportsService';
 import { Spinner } from '../components/Spinner';
@@ -149,9 +147,9 @@ const MatchDetail = () => {
               getMatchInfo(matchId)
             ]);
             
-            // Get the actual data or use empty objects as fallbacks
-            const scorecardData = scorecardResponse?.data || SAMPLE_SCORECARD;
-            const infoData = infoResponse?.data || SAMPLE_MATCH_INFO;
+            const scorecardData = scorecardResponse?.data;
+            const infoData = infoResponse?.data;
+            if (!scorecardData || !infoData) throw new Error('Incomplete cricket API response');
             
             // Ensure the data has all required CricketMatchInfo properties
             const cricketMatchData: CricketMatchInfo = {
@@ -181,14 +179,8 @@ const MatchDetail = () => {
             setMatchInfo(infoData);
             setMatchData(cricketMatchData);
           } catch (cricketError) {
-            console.error('Error with cricket API, using sample data:', cricketError);
-            // Use sample data if API fails
-            setMatchData({
-              ...SAMPLE_MATCH_INFO,
-              id: matchId,
-              scorecard: SAMPLE_SCORECARD
-            } as CricketMatchInfo);
-            setScorecardData(SAMPLE_SCORECARD);
+            console.error('Error with cricket API:', cricketError);
+            setError('Failed to load live cricket data. Please try again later.');
           }
         } else {
           try {
@@ -200,16 +192,17 @@ const MatchDetail = () => {
             }
             
             // Ensure the data matches InternalMatch type
+            const normalized = data as any;
             const internalMatch: InternalMatch = {
               _id: data._id,
-              homeTeam: data.homeTeam,
-              awayTeam: data.awayTeam,
+              homeTeam: normalized.homeTeam,
+              awayTeam: normalized.awayTeam,
               venue: data.venue || { name: 'Unknown Venue' },
               startTime: data.startTime || new Date().toISOString(),
               status: data.status || 'unknown',
               scores: data.scores,
-              winner: data.winner,
-              league: data.league
+              winner: normalized.winner,
+              league: normalized.league
             };
             
             setMatchData(internalMatch);
@@ -299,7 +292,7 @@ const MatchDetail = () => {
       <SEO
         title={`${title} - Sports`}
         description={`Live updates, scores and stats for ${title}`}
-        url={`/sports/match/${id}`}
+        url={`/sports/${sportSlug || 'all'}/match/${matchId}`}
         type="article"
       />
       

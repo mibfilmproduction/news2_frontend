@@ -6,11 +6,18 @@ Disallow: /register
 Disallow: /profile
 Disallow: /reset-password
 Disallow: /forgot-password
+Disallow: /search
+Disallow: /*?*
 
 # Search engine crawlers
 User-agent: Googlebot
 Allow: /
-Disallow: /admin
+
+User-agent: Googlebot-News
+Allow: /
+
+User-agent: Google-Extended
+Allow: /
 
 User-agent: Bingbot
 Allow: /
@@ -21,4 +28,5 @@ Allow: /
 User-agent: facebookexternalhit
 Allow: /
 
-Sitemap: http://mibnews.in/sitemap.xml
+Sitemap: https://www.mibnews.in/sitemap.xml
+Sitemap: https://www.mibnews.in/sitemap-news.xml

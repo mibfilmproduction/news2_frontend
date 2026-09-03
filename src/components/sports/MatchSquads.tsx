@@ -24,12 +24,10 @@ const MatchSquads = ({ matchData, sportSlug }: MatchSquadsProps) => {
 };
 
 const CricketSquads = ({ matchData }: { matchData: any }) => {
-  // For demo purposes, we'll create mock data if real data is not available
   const teams = matchData.teamInfo || [];
-  
-  // Generate demo squads if they don't exist in the data
-  const team1Players = generateDemoSquad('cricket', teams[0]?.name || 'Team 1');
-  const team2Players = generateDemoSquad('cricket', teams[1]?.name || 'Team 2');
+  const squads = matchData.squads || matchData.teamSquads || [];
+  const team1Players = squads[0]?.players || teams[0]?.players || [];
+  const team2Players = squads[1]?.players || teams[1]?.players || [];
   
   return (
     <Tabs defaultValue="team1" className="w-full">
@@ -238,8 +236,8 @@ const GenericSquads = ({ matchData }: { matchData: any }) => {
   const awayTeam = matchData.awayTeam || { name: 'Away Team' };
   
   // Generate demo squads if they don't exist in the data
-  const homeSquad = generateDemoSquad('football', homeTeam.name);
-  const awaySquad = generateDemoSquad('football', awayTeam.name);
+  const homeSquad = matchData.homeSquad || homeTeam.players || [];
+  const awaySquad = matchData.awaySquad || awayTeam.players || [];
   
   return (
     <Tabs defaultValue="home" className="w-full">

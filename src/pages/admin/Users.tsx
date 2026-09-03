@@ -56,8 +56,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { Spinner } from "@/components/Spinner";
-import { api } from "@/lib/api-client";
-import { userApi } from "@/lib/api";
+import { api, userApi } from "@/lib/api-client";
 import { getImageUrl } from "@/lib/utils";
 
 // Define form schema for user validation

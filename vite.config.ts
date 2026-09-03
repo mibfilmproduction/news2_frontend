@@ -8,6 +8,16 @@ export default defineConfig(({ mode }) => ({
   server: {
     host: "::",
     port: 8080,
+    proxy: {
+      '/api': {
+        target: 'http://localhost:5003',
+        changeOrigin: true,
+      },
+      '/uploads': {
+        target: 'http://localhost:5003',
+        changeOrigin: true,
+      },
+    },
   },
   plugins: [
     react(),
@@ -147,12 +157,13 @@ export default defineConfig(({ mode }) => ({
         
         // Asset file naming for better caching
         assetFileNames: (assetInfo) => {
-          const info = assetInfo.name.split('.');
+          const assetName = assetInfo.name || 'asset';
+          const info = assetName.split('.');
           const ext = info[info.length - 1];
-          if (/\.(png|jpe?g|gif|svg|webp|avif|ico)$/.test(assetInfo.name)) {
+          if (/\.(png|jpe?g|gif|svg|webp|avif|ico)$/.test(assetName)) {
             return `assets/images/[name]-[hash].${ext}`;
           }
-          if (/\.(woff2?|eot|ttf|otf)$/.test(assetInfo.name)) {
+          if (/\.(woff2?|eot|ttf|otf)$/.test(assetName)) {
             return `assets/fonts/[name]-[hash].${ext}`;
           }
           return `assets/[name]-[hash].${ext}`;
@@ -197,5 +208,9 @@ export default defineConfig(({ mode }) => ({
   preview: {
     port: 4173,
     host: true,
+    proxy: {
+      '/api': { target: 'http://localhost:5003', changeOrigin: true },
+      '/uploads': { target: 'http://localhost:5003', changeOrigin: true },
+    },
   },
 }));

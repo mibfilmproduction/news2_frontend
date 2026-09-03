@@ -13,7 +13,6 @@ import { Separator } from "@/components/ui/separator";
 import AdvertisementDisplay from "@/components/AdvertisementDisplay";
 import SEO from "@/components/SEO";
 import { useLanguage } from "@/components/LanguageSwitcher";
-import add from "../assets/Screenshot 2025-05-10 171819.png";
 
 interface Article {
   _id: string;
@@ -291,25 +290,6 @@ const HomePage = () => {
                 </div>
               </div>
             </Link>
-
-            {/* advertisement */}
-
-            <div className="w-full bg-gray-200 py-4 border-b border-gray-300">
-              <div className="container mx-auto px-4">
-                <div className="flex justify-center items-center h-full border border-gray-300 rounded-md overflow-hidden">
-                  <div className="text-gray-400 text-center w-full">
-                    <img
-                      src={add}
-                      alt="Advertisement"
-                      className="max-w-full h-auto object-contain mx-auto"
-                      style={{ maxHeight: '90px' }}
-                    />
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* advertisement */}
           </Card>
         ) : (
           <Card className="md:col-span-2 overflow-hidden p-6">
@@ -320,23 +300,6 @@ const HomePage = () => {
 
         {/* Secondary Articles */}
         <div className="space-y-6">
-
-          {/* Advertisement */}
-          <div className="w-full bg-gray-200 py-2 border-b rounded border-gray-300">
-            <div className="container mx-auto px-2">
-              <div className="flex justify-center items-center h-full border border-gray-300 rounded-md overflow-hidden">
-                <div className="text-gray-400 text-center">
-                  <img
-                    src={add}
-                    alt="Advertisement"
-                    className="max-w-full h-auto object-contain mx-auto"
-                    style={{ maxHeight: '400px' }}
-                  />
-                </div>
-              </div>
-            </div>
-          </div>
-          {/* Advertisement */}
 
           {loading ? (
             [...Array(2)].map((_, i) => (
@@ -373,27 +336,11 @@ const HomePage = () => {
                 <p>No articles found.</p>
               </Card>
             )}
-          <div className="w-full bg-gray-200 py-2 border-b rounded border-gray-300">
-            <div className="container mx-auto px-2">
-              <div className="flex justify-center items-center h-full border border-gray-300 rounded-md overflow-hidden">
-                <div className="text-gray-400 text-center">
-                  <img
-                    src={add}
-                    alt="Advertisement"
-                    className="max-w-full h-auto object-contain mx-auto"
-                    style={{ maxHeight: '400px' }}
-                  />
-                </div>
-              </div>
-            </div>
-          </div>
         </div>
 
       </div>
 
 
-
-      {/* jnfnfsnd  kas kajd  kas  */}
       <div className="bg-gray-100 py-10 mt-16 rounded-lg">
         <div className="container mx-auto">
           {/* Featured Reels Section with Carousel */}

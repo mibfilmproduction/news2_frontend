@@ -141,7 +141,11 @@ const Dashboard = () => {
     ]
   };
   
-  const [overviewData, setOverviewData] = useState<DashboardOverview>(mockOverviewData);
+  const [overviewData, setOverviewData] = useState<DashboardOverview>({
+    counts: { articles: 0, publishedArticles: 0, draftArticles: 0, categories: 0, users: 0, comments: 0, totalViews: 0 },
+    recentArticles: [],
+    topArticles: []
+  });
   
   // Category performance data
   const mockCategoryData: CategoryData[] = [
@@ -153,7 +157,7 @@ const Dashboard = () => {
     { name: 'Business', articleCount: 6, viewCount: 1562 }
   ];
   
-  const [categoryData, setCategoryData] = useState<CategoryData[]>(mockCategoryData);
+  const [categoryData, setCategoryData] = useState<CategoryData[]>([]);
   const [isLoadingCategories, setIsLoadingCategories] = useState(true);
   const [categoryError, setCategoryError] = useState<string | null>(null);
   
@@ -174,7 +178,7 @@ const Dashboard = () => {
     return data;
   })();
   
-  const [articleViewsData, setArticleViewsData] = useState<ArticleViewData[]>(mockArticleViewsData);
+  const [articleViewsData, setArticleViewsData] = useState<ArticleViewData[]>([]);
   const [isLoadingViews, setIsLoadingViews] = useState(true);
   const [viewsError, setViewsError] = useState<string | null>(null);
   
@@ -188,16 +192,12 @@ const Dashboard = () => {
     { month: '2025-06', count: 22 }
   ];
   
-  const [userActivityData, setUserActivityData] = useState<UserActivityData[]>(mockUserActivityData);
+  const [userActivityData, setUserActivityData] = useState<UserActivityData[]>([]);
   const [isLoadingUsers, setIsLoadingUsers] = useState(true);
   const [usersError, setUsersError] = useState<string | null>(null);
   
   // Device distribution - still using mock data until we have real analytics
-  const deviceData: DeviceData[] = [
-    { name: 'Mobile', value: 68 },
-    { name: 'Desktop', value: 24 },
-    { name: 'Tablet', value: 8 },
-  ];
+  const deviceData: DeviceData[] = [];
   
   // Fetch dashboard overview data
   useEffect(() => {
@@ -610,7 +610,7 @@ const Dashboard = () => {
       <Card>
         <CardHeader>
           <CardTitle className="text-lg font-medium">Device Distribution</CardTitle>
-          <CardDescription>Visitor device breakdown (mock data)</CardDescription>
+          <CardDescription>Visitor device analytics are not available yet</CardDescription>
         </CardHeader>
         <CardContent className="pt-2 flex justify-center">
           <div className="h-80 w-80">

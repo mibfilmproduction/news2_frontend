@@ -73,7 +73,11 @@ const NavbarTop = () => {
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
           <Link to="/" className="flex items-center shrink-0">
-            <img src={logo} alt="Logo" width={150} height={150} />
+            <img 
+              src={logo} 
+              alt="Logo" 
+              className="h-10 w-auto md:h-12 lg:h-14 max-w-[180px] object-contain" 
+            />
           </Link>
 
           {/* Search Box - Desktop */}

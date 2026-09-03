@@ -12,6 +12,7 @@ import { useLanguage } from '@/components/LanguageSwitcher';
 import { extractTextFromHTML } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { AlertCircle } from 'lucide-react';
+import { api } from '@/lib/api-client';
 import { 
   fetchArticleBySlug, 
   fetchRelatedArticles,
@@ -59,23 +60,11 @@ const ArticleDetail = () => {
   const incrementViewCount = async (articleId: string) => {
     try {
       console.log(`Incrementing view count for article: ${articleId}`);
-      // Use a try/catch directly with fetch to avoid issues with the API client
-      const token = localStorage.getItem('token') || sessionStorage.getItem('token');
-      const url = `${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/news/${articleId}/views`;
+      // Use the API client properly
+      const response = await api.post(`/news/${articleId}/views`, {});
       
-      // Make the fetch request directly instead of using the API client to avoid the variable reference error
-      const response = await fetch(url, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
-        },
-        body: JSON.stringify({})
-      });
-      
-      // No need to process the response for view count, we just care that it was called
-      if (!response.ok) {
-        console.warn(`Failed to increment view count: ${response.status}`);
+      if (!response.success) {
+        console.warn(`Failed to increment view count: ${response.message}`);
       }
     } catch (err) {
       console.error('Error incrementing view count:', err);
@@ -210,7 +199,7 @@ const ArticleDetail = () => {
     if (!article) return [];
     
     // Base keywords from article title and category
-    const baseKeywords = [];
+    const baseKeywords: string[] = [];
     
     // Add title-based keywords
     const titleWords = article.title.toLowerCase().split(' ');

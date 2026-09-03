@@ -86,17 +86,10 @@ const ShortPostsPage = () => {
         // If we got tags from either method, use them
         if (tagsData && tagsData.length > 0) {
           setPopularTags(tagsData);
-        } else if (import.meta.env.DEV) {
-          // Use fallback tags in development mode
-          console.log('Using fallback tags due to API failure');
-          setPopularTags(fallbackTags);
-        }
+        } else setPopularTags([]);
       } catch (error) {
         console.error('Failed to fetch popular tags:', error);
-        if (import.meta.env.DEV) {
-          // Use fallback tags in development
-          setPopularTags(fallbackTags);
-        }
+        setPopularTags([]);
       }
     };
 
@@ -310,13 +303,6 @@ const ShortPostsPage = () => {
           console.error('Error processing API response:', formatError);
           extractedPosts = [];
           totalItems = 0;
-        }
-        
-        // If we couldn't get any posts from the API, use fallback data
-        if (extractedPosts.length === 0 && import.meta.env.DEV) {
-          console.log('No posts found from API, using fallback data');
-          extractedPosts = getFallbackData();
-          totalItems = extractedPosts.length;
         }
         
         // Calculate total pages and ensure it's at least 1

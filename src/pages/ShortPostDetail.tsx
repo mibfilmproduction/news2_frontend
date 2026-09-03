@@ -716,7 +716,7 @@ const ShortPostDetail = () => {
       <SEO
         title={`${post.content.substring(0, 50)}...`}
         description={post.content.substring(0, 160)}
-        url={`/short-posts/${post.slug || post._id}`}
+        url={`/short-posts/${post._id}`}
         type="article"
         image={getAuthorAvatar(post.author) || undefined}
       />

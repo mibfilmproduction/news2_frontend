@@ -97,7 +97,7 @@ const generateDemoCommentary = (sportSlug: string | undefined, matchData: any) =
       
       let commentText = '';
       let type = 'regular';
-      let highlight = '';
+      const highlight = '';
       
       switch (commentType) {
         case 'regular':

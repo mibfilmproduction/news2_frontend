@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/table";
 import Spinner from "@/components/Spinner";
 import { useToast } from "@/hooks/use-toast";
-import { newsApi, categoryApi } from "@/lib/api";
+import { newsApi, categoryApi } from "@/lib/api-client";
 
 type Article = {
   _id: string;
