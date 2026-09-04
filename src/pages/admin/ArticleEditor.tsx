@@ -182,6 +182,7 @@ export function ArticleEditor() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [selectedImage, setSelectedImage] = useState<File | null>(null);
+  const [selectedMediaUrl, setSelectedMediaUrl] = useState<string>("");
   const [previewImage, setPreviewImage] = useState<string>("");
   const [showMediaLibrary, setShowMediaLibrary] = useState(false);
   const [activeTab, setActiveTab] = useState("editor");
@@ -265,6 +266,7 @@ export function ArticleEditor() {
 
   const handleImageChange = (file: File | null) => {
     setSelectedImage(file);
+    setSelectedMediaUrl("");
     if (file) {
       const reader = new FileReader();
       reader.onloadend = () => setPreviewImage(reader.result as string);
@@ -279,6 +281,7 @@ export function ArticleEditor() {
   const handleMediaSelect = (mediaUrl: string) => {
     setPreviewImage(mediaUrl);
     setSelectedImage(null);
+    setSelectedMediaUrl(mediaUrl);
     setShowMediaLibrary(false);
   };
 
@@ -318,6 +321,8 @@ export function ArticleEditor() {
       
       if (selectedImage) {
         formData.append("image", selectedImage);
+      } else if (selectedMediaUrl) {
+        formData.append("imageUrl", selectedMediaUrl);
       }
       
       if (articleId) {
@@ -330,7 +335,7 @@ export function ArticleEditor() {
     } catch (error) {
       console.error("Autosave failed:", error);
     }
-  }, [form, articleId, selectedImage, toast]);
+  }, [form, articleId, selectedImage, selectedMediaUrl, toast]);
 
   useEffect(() => {
     if (autosaveTimer) clearTimeout(autosaveTimer);
@@ -376,6 +381,8 @@ export function ArticleEditor() {
       
       if (selectedImage) {
         formData.append("image", selectedImage);
+      } else if (selectedMediaUrl) {
+        formData.append("imageUrl", selectedMediaUrl);
       }
       
       let response;

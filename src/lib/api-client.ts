@@ -87,10 +87,14 @@ async function handleResponse<T>(response: Response): Promise<ApiResponse<T>> {
   return data as ApiResponse<T>;
 }
 
-function createHeaders(requireAuth = true): HeadersInit {
-  const headers: HeadersInit = {
-    'Content-Type': 'application/json',
-  };
+function createHeaders(requireAuth = true, hasBody = false, isFormData = false): HeadersInit {
+  const headers: Record<string, string> = {};
+
+  // Browsers must generate the multipart boundary. Setting Content-Type here
+  // makes otherwise valid image/video uploads unreadable by multer.
+  if (hasBody && !isFormData) {
+    headers['Content-Type'] = 'application/json';
+  }
 
   if (requireAuth) {
     const token = getAuthToken();
@@ -111,13 +115,14 @@ export const api = {
     const timeoutId = setTimeout(() => controller.abort(), timeout);
 
     try {
-      console.log('API Request:', { url, method: fetchOptions.method, headers: { ...createHeaders(requireAuth), ...fetchOptions.headers }, body: fetchOptions.body });
+      const isFormData = typeof FormData !== 'undefined' && fetchOptions.body instanceof FormData;
+      const requestHeaders = {
+        ...createHeaders(requireAuth, fetchOptions.body != null, isFormData),
+        ...fetchOptions.headers,
+      };
       const response = await fetch(url, {
         ...fetchOptions,
-        headers: {
-          ...createHeaders(requireAuth),
-          ...fetchOptions.headers,
-        },
+        headers: requestHeaders,
         signal: controller.signal,
       });
 
