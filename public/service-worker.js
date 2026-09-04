@@ -8,6 +8,7 @@ const STATIC_ASSETS = [
   '/index.html',
   '/offline.html',
   '/logo.jpeg',
+  '/mib-favicon.png',
   '/manifest.json',
   '/icons/apple-touch-icon.png'
 ];

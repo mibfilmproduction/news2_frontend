@@ -311,7 +311,7 @@ const SEO: React.FC<SEOProps> = ({
       <link rel="canonical" href={pageUrl} />
       
       {/* Favicons */}
-      <link rel="icon" type="image/jpeg" href="/logo.jpeg" />
+      <link rel="icon" type="image/png" href="/mib-favicon.png" />
       <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
       <link rel="manifest" href="/manifest.json" />
     </Helmet>

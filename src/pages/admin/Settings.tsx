@@ -33,7 +33,7 @@ const DEFAULT_SETTINGS: SettingsState = {
   siteTagline: "The Pinnacle of News Coverage",
   adminEmail: "admin@mibnews.in",
   logoUrl: "/logo.jpeg",
-  faviconUrl: "/logo.jpeg",
+  faviconUrl: "/mib-favicon.png",
   articlesPerPage: 10,
   maintenanceMode: false,
   enableComments: true,
