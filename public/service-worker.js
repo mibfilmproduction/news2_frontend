@@ -1,5 +1,5 @@
 // Service Worker for Mibnews
-const CACHE_NAME = 'mibnews-cache-v1';
+const CACHE_NAME = 'mibnews-cache-v2';
 const OFFLINE_PAGE = '/offline.html';
 
 // Resources we want to cache
@@ -55,6 +55,16 @@ self.addEventListener('fetch', (event) => {
   
   // Skip API and admin requests (no caching)
   if (event.request.url.includes('/api/') || event.request.url.includes('/admin/')) {
+    return;
+  }
+
+  // HTML navigations must be network-first so a deployment cannot remain
+  // pinned to an old index.html that references removed hashed chunks.
+  if (event.request.mode === 'navigate') {
+    event.respondWith(
+      fetch(event.request, { cache: 'no-store' })
+        .catch(() => caches.match(OFFLINE_PAGE))
+    );
     return;
   }
   
