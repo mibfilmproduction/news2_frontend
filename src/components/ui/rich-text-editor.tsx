@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Image from "@tiptap/extension-image";
@@ -70,6 +70,8 @@ import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
+import { api } from "@/lib/api-client";
+import { toast } from "react-hot-toast";
 
 const lowlight = createLowlight(common);
 
@@ -146,6 +148,8 @@ export function RichTextEditor({
   editable = true,
   className,
 }: RichTextEditorProps) {
+  const imageInputRef = useRef<HTMLInputElement>(null);
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
   const editor = useEditor({
     extensions: [
       StarterKit.configure({
@@ -221,9 +225,38 @@ export function RichTextEditor({
   }
 
   const handleImageInsert = () => {
-    const url = window.prompt("Enter image URL:");
-    if (url) {
-      editor.chain().focus().setImage({ src: url }).run();
+    imageInputRef.current?.click();
+  };
+
+  const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+
+    if (!file.type.startsWith("image/")) {
+      toast.error("Please select an image file");
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error("Image must be smaller than 10MB");
+      return;
+    }
+
+    setIsUploadingImage(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("folder", "mibnews/articles");
+      formData.append("alt", file.name);
+      const response = await api.upload<{ url: string }>("/media/upload", formData);
+      const url = response.data?.url;
+      if (!response.success || !url) throw new Error(response.message || "Image upload failed");
+      editor.chain().focus().setImage({ src: url, alt: file.name }).run();
+      toast.success("Image added to article");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Image upload failed");
+    } finally {
+      setIsUploadingImage(false);
     }
   };
 
@@ -280,7 +313,9 @@ export function RichTextEditor({
         <DropdownMenuTrigger asChild>
           <Button variant="outline" size="sm" className="h-8 px-3">
             <Type className="h-4 w-4 mr-1" />
-            Paragraph
+            {editor.isActive("heading", { level: 1 }) ? "Heading 1" :
+              editor.isActive("heading", { level: 2 }) ? "Heading 2" :
+              editor.isActive("heading", { level: 3 }) ? "Heading 3" : "Paragraph"}
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
@@ -430,6 +465,14 @@ export function RichTextEditor({
 
   return (
     <div className={cn("border rounded-lg bg-white", className)}>
+      <input
+        ref={imageInputRef}
+        type="file"
+        accept="image/jpeg,image/png,image/webp,image/avif"
+        className="sr-only"
+        onChange={handleImageUpload}
+        aria-label="Upload image to article"
+      />
       {/* Toolbar */}
       <div className="flex flex-wrap items-center gap-1 border-b bg-muted/20 p-2">
         {/* Heading */}
@@ -453,7 +496,11 @@ export function RichTextEditor({
         <Separator orientation="vertical" className="mx-1 h-6" />
 
         {/* Media */}
-        {MENU_ITEMS[4].items.map((item) => renderMenuButton(item))}
+        {MENU_ITEMS[4].items.map((item) =>
+          item.command === "insertImage"
+            ? renderMenuButton({ ...item, label: isUploadingImage ? "Uploading image..." : item.label })
+            : renderMenuButton(item)
+        )}
 
         <Separator orientation="vertical" className="mx-1 h-6" />
 
