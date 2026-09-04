@@ -13,18 +13,12 @@ import {
 import { Bell, LogOut, Settings } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 import logo from '@/assets/logo.png'
+import { useAuth } from '@/hooks/useAuth';
 
 const AdminHeader = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
-
-  const user = React.useMemo(() => {
-    try {
-      return JSON.parse(localStorage.getItem("user") || "null");
-    } catch {
-      return null;
-    }
-  }, []);
+  const { user, logout } = useAuth();
 
   const userName = user?.name || "Admin User";
   const userEmail = user?.email || "";
@@ -36,9 +30,7 @@ const AdminHeader = () => {
     .toUpperCase();
 
   const handleLogout = () => {
-    localStorage.removeItem('user');
-    localStorage.removeItem('token');
-    sessionStorage.removeItem('token');
+    logout();
     toast({
       title: 'Logged out successfully',
       description: 'You have been logged out of the admin panel.',

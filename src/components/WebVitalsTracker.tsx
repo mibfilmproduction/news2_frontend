@@ -1,14 +1,16 @@
 import React, { useEffect } from 'react';
-import { useLanguage } from './LanguageSwitcher';
 
 // Web Vitals tracking component for performance monitoring
 export const WebVitalsTracker: React.FC<{ 
   onMetric?: (metric: { name: string; value: number; rating: string }) => void 
 }> = ({ onMetric }) => {
-  const { language } = useLanguage();
-
   useEffect(() => {
     if (typeof window === 'undefined' || !window.PerformanceObserver) return;
+    const observers: PerformanceObserver[] = [];
+    const report = (metric: { name: string; value: number; rating: string }) => {
+      if (import.meta.env.DEV) console.debug(`${metric.name}: ${metric.value}${metric.name === 'CLS' ? '' : 'ms'} (${metric.rating})`);
+      onMetric?.(metric);
+    };
 
     // Track LCP (Largest Contentful Paint)
     try {
@@ -21,11 +23,11 @@ export const WebVitalsTracker: React.FC<{
             value: Math.round(lastEntry.startTime),
             rating: lastEntry.startTime <= 2500 ? 'good' : lastEntry.startTime <= 4000 ? 'needs-improvement' : 'poor',
           };
-          console.log(`LCP: ${metric.value}ms (${metric.rating})`);
-          onMetric?.(metric);
+          report(metric);
         }
       });
       lcpObserver.observe({ type: 'largest-contentful-paint', buffered: true });
+      observers.push(lcpObserver);
     } catch (e) {
       console.warn('LCP observation not supported');
     }
@@ -41,11 +43,11 @@ export const WebVitalsTracker: React.FC<{
             value: Math.round(fidEntry.processingStart - fidEntry.startTime),
             rating: fidEntry.processingStart - fidEntry.startTime <= 100 ? 'good' : fidEntry.processingStart - fidEntry.startTime <= 300 ? 'needs-improvement' : 'poor',
           };
-          console.log(`FID: ${metric.value}ms (${metric.rating})`);
-          onMetric?.(metric);
+          report(metric);
         });
       });
       fidObserver.observe({ type: 'first-input', buffered: true });
+      observers.push(fidObserver);
     } catch (e) {
       console.warn('FID observation not supported');
     }
@@ -65,10 +67,10 @@ export const WebVitalsTracker: React.FC<{
           value: Math.round(clsValue * 1000) / 1000,
           rating: clsValue <= 0.1 ? 'good' : clsValue <= 0.25 ? 'needs-improvement' : 'poor',
         };
-        console.log(`CLS: ${metric.value} (${metric.rating})`);
-        onMetric?.(metric);
+        report(metric);
       });
       clsObserver.observe({ type: 'layout-shift', buffered: true });
+      observers.push(clsObserver);
     } catch (e) {
       console.warn('CLS observation not supported');
     }
@@ -84,12 +86,12 @@ export const WebVitalsTracker: React.FC<{
               value: Math.round(entry.startTime),
               rating: entry.startTime <= 1800 ? 'good' : entry.startTime <= 3000 ? 'needs-improvement' : 'poor',
             };
-            console.log(`FCP: ${metric.value}ms (${metric.rating})`);
-            onMetric?.(metric);
+            report(metric);
           }
         });
       });
       fcpObserver.observe({ type: 'paint', buffered: true });
+      observers.push(fcpObserver);
     } catch (e) {
       console.warn('FCP observation not supported');
     }
@@ -105,8 +107,7 @@ export const WebVitalsTracker: React.FC<{
           value: Math.round(ttfb),
           rating: ttfb <= 800 ? 'good' : ttfb <= 1800 ? 'needs-improvement' : 'poor',
         };
-        console.log(`TTFB: ${metric.value}ms (${metric.rating})`);
-        onMetric?.(metric);
+        report(metric);
       }
     } catch (e) {
       console.warn('TTFB measurement not supported');
@@ -114,9 +115,9 @@ export const WebVitalsTracker: React.FC<{
 
     // Cleanup
     return () => {
-      // Observers are automatically cleaned up when component unmounts
+      observers.forEach((observer) => observer.disconnect());
     };
-  }, [language, onMetric]);
+  }, [onMetric]);
 
   return null;
 };

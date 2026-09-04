@@ -7,6 +7,7 @@ import ScrollToTop from "./components/ScrollToTop";
 import AdminLayout from "./components/admin/AdminLayout";
 import HomePage from "./pages/HomePage";
 import { AuthProvider } from "./hooks/useAuth.tsx";
+import { useAuth } from "./hooks/useAuth.tsx";
 import ProtectedRoute from "./components/ProtectedRoute";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { WebVitalsTracker } from "./components/WebVitalsTracker";
@@ -60,16 +61,12 @@ const CareerDetail = lazy(() => import("./pages/CareerDetail"));
 
 // Guard for admin-only pages (editor role is blocked)
 const AdminOnlyPage = ({ children }: { children: React.ReactNode }) => {
-  const user = React.useMemo(() => {
-    try {
-      return JSON.parse(localStorage.getItem("user") || "null");
-    } catch {
-      return null;
-    }
-  }, []);
-  if (user?.role !== "admin") {
-    return <Navigate to={user?.role === "editor" ? "/admin/articles" : "/login"} replace />;
-  }
+  const { user, isAuthenticated, isLoading } = useAuth();
+  const location = useLocation();
+
+  if (isLoading) return <div className="min-h-[40vh] flex items-center justify-center"><div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" /></div>;
+  if (!isAuthenticated || !user) return <Navigate to="/login" state={{ from: location }} replace />;
+  if (user.role !== "admin") return <Navigate to="/unauthorized" replace />;
   return <>{children}</>;
 };
 

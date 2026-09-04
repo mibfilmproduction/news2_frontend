@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useCallback } from "react";
-import { useNavigate, useParams, useSearchParams } from "react-router-dom";
-import { useForm } from "react-hook-form";
+import React, { useState, useEffect, useCallback, useRef } from "react";
+import { useNavigate, useParams } from "react-router-dom";
+import { useForm, useWatch } from "react-hook-form";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -172,7 +172,6 @@ const initialFormValues: ArticleFormData = {
 export function ArticleEditor() {
   const navigate = useNavigate();
   const params = useParams();
-  const searchParams = useSearchParams();
   const articleId = params.id as string;
   const isEditing = !!articleId;
   const { toast } = useToast();
@@ -186,7 +185,7 @@ export function ArticleEditor() {
   const [previewImage, setPreviewImage] = useState<string>("");
   const [showMediaLibrary, setShowMediaLibrary] = useState(false);
   const [activeTab, setActiveTab] = useState("editor");
-  const [autosaveTimer, setAutosaveTimer] = useState<NodeJS.Timeout | null>(null);
+  const autosaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const [wordCount, setWordCount] = useState(0);
   const [readingTime, setReadingTime] = useState(0);
@@ -196,6 +195,8 @@ export function ArticleEditor() {
     defaultValues: initialFormValues,
     mode: "onChange",
   });
+  const watchedValues = useWatch({ control: form.control });
+  const watchedContent = form.watch("content");
 
   const fetchArticle = useCallback(async () => {
     if (!articleId) return;
@@ -230,6 +231,8 @@ export function ArticleEditor() {
           schemaType: articleData.schemaType || "NewsArticle",
           customFields: articleData.customFields || {},
         });
+      } else {
+        throw new Error(response.message || "Failed to load article");
       }
     } catch (error) {
       console.error("Error fetching article:", error);
@@ -244,11 +247,14 @@ export function ArticleEditor() {
       const response = await api.get("/categories?active=true&format=simple");
       if (response.success && response.data) {
         setCategories(response.data);
+      } else {
+        throw new Error(response.message || "Failed to load categories");
       }
     } catch (error) {
       console.error("Error fetching categories:", error);
+      toast({ title: "Categories unavailable", description: "Reload the page or create a category first.", variant: "destructive" });
     }
-  }, []);
+  }, [toast]);
 
   useEffect(() => {
     fetchCategories();
@@ -258,11 +264,11 @@ export function ArticleEditor() {
   }, [fetchCategories, fetchArticle, isEditing]);
 
   useEffect(() => {
-    const content = form.watch("content");
+    const content = watchedContent;
     const words = content ? content.replace(/<[^>]*>/g, "").trim().split(/\s+/).filter(Boolean).length : 0;
     setWordCount(words);
     setReadingTime(Math.max(1, Math.ceil(words / 200)));
-  }, [form.watch("content")]);
+  }, [watchedContent]);
 
   const handleImageChange = (file: File | null) => {
     setSelectedImage(file);
@@ -292,7 +298,9 @@ export function ArticleEditor() {
   };
 
   const autosave = useCallback(async () => {
-    if (!form.formState.isDirty) return;
+    // A new article has no stable ID; auto-creating it every 30 seconds would
+    // produce duplicate drafts. Autosave begins after the first explicit save.
+    if (!isEditing || !form.formState.isDirty || isSaving) return;
     try {
       const formData = new FormData();
       const values = form.getValues();
@@ -325,23 +333,24 @@ export function ArticleEditor() {
         formData.append("imageUrl", selectedMediaUrl);
       }
       
-      if (articleId) {
-        await api.updateWithUpload(`/news/${articleId}`, formData);
-      } else {
-        await api.upload("/news", formData);
-      }
+      const response = await api.updateWithUpload(`/news/${articleId}`, formData);
+      if (!response.success) throw new Error(response.message || "Autosave failed");
       setLastSaved(new Date());
-      toast({ title: "Auto-saved", description: "Draft saved automatically" });
+      form.reset(form.getValues(), { keepValues: true });
     } catch (error) {
       console.error("Autosave failed:", error);
     }
-  }, [form, articleId, selectedImage, selectedMediaUrl, toast]);
+  }, [form, articleId, selectedImage, selectedMediaUrl, isEditing, isSaving]);
 
   useEffect(() => {
-    if (autosaveTimer) clearTimeout(autosaveTimer);
-    setAutosaveTimer(setTimeout(autosave, 30000));
-    return () => { if (autosaveTimer) clearTimeout(autosaveTimer); };
-  }, [form.watch(), autosave]);
+    if (autosaveTimer.current) clearTimeout(autosaveTimer.current);
+    if (isEditing && form.formState.isDirty) {
+      autosaveTimer.current = setTimeout(autosave, 30000);
+    }
+    return () => {
+      if (autosaveTimer.current) clearTimeout(autosaveTimer.current);
+    };
+  }, [watchedValues, autosave, isEditing, form.formState.isDirty]);
 
   const onSubmit = async (values: ArticleFormData, publishAction: "save" | "publish" | "schedule" = "save") => {
     setIsSaving(true);
@@ -409,10 +418,27 @@ export function ArticleEditor() {
     }
   };
 
+  const submitArticle = (
+    action: "save" | "publish" | "schedule",
+    overrides: Partial<ArticleFormData> = {},
+  ) => {
+    Object.entries(overrides).forEach(([key, value]) => {
+      form.setValue(key as keyof ArticleFormData, value as never, { shouldValidate: true, shouldDirty: true });
+    });
+    void form.handleSubmit(
+      (values) => onSubmit({ ...values, ...overrides }, action),
+      () => {
+        setActiveTab("editor");
+        toast({ title: "Complete required fields", description: "Please correct the highlighted fields before saving.", variant: "destructive" });
+      },
+    )();
+  };
+
   const handleDelete = async () => {
     if (!articleId || !confirm("Are you sure you want to delete this article?")) return;
     try {
-      await api.delete(`/news/${articleId}`);
+      const response = await api.delete(`/news/${articleId}`);
+      if (!response.success) throw new Error(response.message || "Failed to delete article");
       toast({ title: "Deleted", description: "Article deleted successfully" });
       navigate("/admin/articles");
     } catch (error) {
@@ -421,8 +447,8 @@ export function ArticleEditor() {
   };
 
   const handlePreview = () => {
-    if (articleId) {
-      window.open(`/article/${article.slug}`, "_blank");
+    if (articleId && article?.slug) {
+      window.open(`/article/${article.slug}`, "_blank", "noopener,noreferrer");
     } else {
       toast({ title: "Save first", description: "Save the article to preview", variant: "destructive" });
     }
@@ -447,10 +473,11 @@ export function ArticleEditor() {
   }
 
   return (
+    <Form {...form}>
     <div className="min-h-screen bg-gray-50">
       {/* Top Bar */}
-      <header className="sticky top-0 z-40 bg-white border-b border-gray-200">
-        <div className="container mx-auto px-4 py-3 flex items-center justify-between">
+      <header className="sticky top-0 z-20 border-b border-gray-200 bg-white">
+        <div className="container mx-auto px-4 py-3 flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-4">
             <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
               <ChevronLeft className="h-5 w-5" />
@@ -463,7 +490,7 @@ export function ArticleEditor() {
             </div>
           </div>
           
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center justify-end gap-2">
             <div className="hidden sm:flex items-center gap-2 text-sm text-gray-600">
               <span>{wordCount} words</span>
               <span>•</span>
@@ -490,21 +517,20 @@ export function ArticleEditor() {
                   Preview
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => onSubmit(form.getValues(), "save")} disabled={isSaving}>
+                <DropdownMenuItem onClick={() => submitArticle("save", { status: "draft" })} disabled={isSaving}>
                   <Save className="h-4 w-4 mr-2" />
                   Save Draft
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
             
-            <PublishPanel
-              onPublish={() => onSubmit(form.getValues(), "publish")}
-              onSchedule={(date) => form.setValue("scheduledAt", date)}
-              onSaveDraft={() => onSubmit(form.getValues(), "save")}
-              isSaving={isSaving}
-              currentStatus={form.watch("status")}
-              scheduledAt={form.watch("scheduledAt")}
-            />
+            <Button variant="outline" size="sm" onClick={() => submitArticle("save", { status: "draft" })} disabled={isSaving}>
+              <Save className="h-4 w-4 mr-2" /> Save Draft
+            </Button>
+            <Button size="sm" onClick={() => submitArticle("publish")} disabled={isSaving}>
+              {isSaving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              {isEditing ? "Update" : "Publish"}
+            </Button>
           </div>
         </div>
       </header>
@@ -515,7 +541,7 @@ export function ArticleEditor() {
           <div className="lg:col-span-3 space-y-6">
             {/* Editor Tab */}
             <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-              <TabsList className="grid w-full grid-cols-4">
+              <TabsList className="grid h-auto w-full grid-cols-2 sm:grid-cols-4">
                 <TabsTrigger value="editor" className="flex items-center gap-2">
                   <FileText className="h-4 w-4" />
                   Editor
@@ -545,8 +571,8 @@ export function ArticleEditor() {
                       control={form.control}
                       name="title"
                       render={({ field }) => (
-                        <div className="space-y-2 mb-6">
-                          <Label>Title</Label>
+                        <FormItem className="space-y-2 mb-6">
+                          <FormLabel>Title *</FormLabel>
                           <Input
                             placeholder="Enter article title..."
                             className="text-2xl font-medium"
@@ -555,7 +581,8 @@ export function ArticleEditor() {
                           <p className="text-xs text-muted-foreground">
                             {field.value?.length || 0} characters
                           </p>
-                        </div>
+                          <FormMessage />
+                        </FormItem>
                       )}
                     />
                     
@@ -563,17 +590,18 @@ export function ArticleEditor() {
                       control={form.control}
                       name="summary"
                       render={({ field }) => (
-                        <div className="space-y-2 mb-6">
-                          <Label>Summary / Excerpt</Label>
+                        <FormItem className="space-y-2 mb-6">
+                          <FormLabel>Summary / Excerpt *</FormLabel>
                           <Textarea
                             placeholder="Brief summary for previews and RSS feeds..."
                             className="h-24"
                             {...field}
                           />
                           <p className="text-xs text-muted-foreground">
-                            {field.value?.length || 0}/300 characters
+                            {field.value?.length || 0}/500 characters
                           </p>
-                        </div>
+                          <FormMessage />
+                        </FormItem>
                       )}
                     />
 
@@ -581,14 +609,15 @@ export function ArticleEditor() {
                       control={form.control}
                       name="content"
                       render={({ field }) => (
-                        <div className="space-y-2">
-                          <Label>Content</Label>
+                        <FormItem className="space-y-2">
+                          <FormLabel>Content *</FormLabel>
                           <RichTextEditor
                             content={field.value}
                             onChange={(value) => field.onChange(value)}
                             placeholder="Start writing your article..."
                           />
-                        </div>
+                          <FormMessage />
+                        </FormItem>
                       )}
                     />
                   </CardContent>
@@ -610,7 +639,7 @@ export function ArticleEditor() {
                     />
                     {previewImage && (
                       <p className="text-xs text-muted-foreground mt-2">
-                        Current: {previewImage.split("/").pop()?.split("?")[0]}
+                        Current: {previewImage.startsWith("data:image/") ? "Selected image preview" : previewImage.split("/").pop()?.split("?")[0]}
                       </p>
                     )}
                     <Button
@@ -642,7 +671,7 @@ export function ArticleEditor() {
                         render={({ field }) => (
                           <FormItem>
                             <FormLabel>Category *</FormLabel>
-                            <Select onValueChange={field.onChange} defaultValue={field.value}>
+                            <Select onValueChange={field.onChange} value={field.value}>
                               <FormControl>
                                 <SelectTrigger className="w-full">
                                   <SelectValue placeholder="Select a category" />
@@ -664,7 +693,7 @@ export function ArticleEditor() {
                         render={({ field }) => (
                           <FormItem>
                             <FormLabel>Language *</FormLabel>
-                            <Select onValueChange={field.onChange} defaultValue={field.value}>
+                            <Select onValueChange={field.onChange} value={field.value}>
                               <FormControl>
                                 <SelectTrigger className="w-full">
                                   <SelectValue placeholder="Select language" />
@@ -766,9 +795,9 @@ export function ArticleEditor() {
           {/* Sidebar */}
           <div className="space-y-6">
             <PublishPanel
-              onPublish={() => onSubmit(form.getValues(), "publish")}
-              onSchedule={(date) => form.setValue("scheduledAt", date)}
-              onSaveDraft={() => onSubmit(form.getValues(), "save")}
+              onPublish={() => submitArticle("publish")}
+              onSchedule={(date) => submitArticle("schedule", { status: "scheduled", scheduledAt: date })}
+              onSaveDraft={() => submitArticle("save", { status: "draft" })}
               isSaving={isSaving}
               currentStatus={form.watch("status")}
               scheduledAt={form.watch("scheduledAt")}
@@ -786,12 +815,12 @@ export function ArticleEditor() {
                 <CategoryManager
                   categories={categories}
                   selectedCategory={form.watch("category")}
-                  onSelectCategory={(id) => form.setValue("category", id)}
+                  onSelectCategory={(id) => form.setValue("category", id, { shouldValidate: true, shouldDirty: true })}
                 />
                 <Separator className="my-4" />
                 <TagManager
                   value={form.watch("tags")}
-                  onChange={(tags) => form.setValue("tags", tags)}
+                  onChange={(tags) => form.setValue("tags", tags, { shouldDirty: true })}
                 />
               </CardContent>
             </Card>
@@ -884,6 +913,7 @@ export function ArticleEditor() {
         </DialogContent>
       </Dialog>
     </div>
+    </Form>
   );
 }
 

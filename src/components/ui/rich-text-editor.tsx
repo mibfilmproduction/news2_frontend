@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useEffect } from "react";
 import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Image from "@tiptap/extension-image";
@@ -151,6 +151,8 @@ export function RichTextEditor({
       StarterKit.configure({
         heading: { levels: [1, 2, 3, 4, 5, 6] },
         codeBlock: false,
+        link: false,
+        underline: false,
       }),
       Image.configure({
         inline: true,
@@ -206,6 +208,14 @@ export function RichTextEditor({
     },
   });
 
+  // Tiptap only consumes `content` during initialization. Keep it in sync
+  // when an existing article is loaded asynchronously or the form is reset.
+  useEffect(() => {
+    if (editor && editor.getHTML() !== content) {
+      editor.commands.setContent(content || '', { emitUpdate: false });
+    }
+  }, [content, editor]);
+
   if (!editor) {
     return null;
   }
@@ -249,6 +259,7 @@ export function RichTextEditor({
 
     return (
       <Button
+        key={`${item.command}-${item.label}`}
         type="button"
         variant={isActive ? "secondary" : "outline"}
         size="icon"
@@ -420,48 +431,48 @@ export function RichTextEditor({
   return (
     <div className={cn("border rounded-lg bg-white", className)}>
       {/* Toolbar */}
-      <div className="border-b p-2 flex flex-wrap gap-1 items-center">
+      <div className="flex flex-wrap items-center gap-1 border-b bg-muted/20 p-2">
         {/* Heading */}
         {renderHeadingDropdown()}
 
-        <Separator className="h-6 mx-1" />
+        <Separator orientation="vertical" className="mx-1 h-6" />
 
         {/* Formatting */}
         {MENU_ITEMS[1].items.map((item) => renderMenuButton(item, editor.isActive(item.command)))}
 
-        <Separator className="h-6 mx-1" />
+        <Separator orientation="vertical" className="mx-1 h-6" />
 
         {/* Lists */}
         {MENU_ITEMS[2].items.map((item) => renderMenuButton(item, editor.isActive(item.command)))}
 
-        <Separator className="h-6 mx-1" />
+        <Separator orientation="vertical" className="mx-1 h-6" />
 
         {/* Blocks */}
         {MENU_ITEMS[3].items.map((item) => renderMenuButton(item))}
 
-        <Separator className="h-6 mx-1" />
+        <Separator orientation="vertical" className="mx-1 h-6" />
 
         {/* Media */}
         {MENU_ITEMS[4].items.map((item) => renderMenuButton(item))}
 
-        <Separator className="h-6 mx-1" />
+        <Separator orientation="vertical" className="mx-1 h-6" />
 
         {/* Alignment */}
         {MENU_ITEMS[5].items.map((item) => renderMenuButton(item, editor.isActive(item.command)))}
 
-        <Separator className="h-6 mx-1" />
+        <Separator orientation="vertical" className="mx-1 h-6" />
 
         {/* Colors */}
         {renderColorPicker("color")}
         {renderColorPicker("background")}
 
-        <Separator className="h-6 mx-1" />
+        <Separator orientation="vertical" className="mx-1 h-6" />
 
         {/* Typography */}
         {renderFontFamilyPicker()}
         {renderFontSizePicker()}
 
-        <Separator className="h-6 mx-1" />
+        <Separator orientation="vertical" className="mx-1 h-6" />
 
         {/* History */}
         <Button

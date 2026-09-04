@@ -715,60 +715,6 @@ const Videos = () => {
           <RefreshCw className="mr-2 h-4 w-4" /> Refresh Data
         </Button>
         
-        {/* For testing - load sample data */}
-        <Button 
-          variant="outline" 
-          onClick={() => {
-            // Sample data for testing
-            setVideos([
-              {
-                _id: '1',
-                title: 'Demo Video 1',
-                description: 'This is a demo video for testing',
-                videoUrl: 'https://www.youtube.com/embed/dQw4w9WgXcQ',
-                thumbnail: 'https://via.placeholder.com/600x400',
-                duration: '3:45',
-                categoryName: 'News',
-                category: 'news-cat',
-                author: 'Admin',
-                views: 100,
-                language: 'hindi',
-                videoLanguage: 'hindi', // Added to match updated schema
-                tags: ['news', 'demo'],
-                isActive: true,
-                isFeatured: true,
-                createdAt: new Date().toISOString(),
-                updatedAt: new Date().toISOString()
-              },
-              {
-                _id: '2',
-                title: 'Demo Video 2',
-                description: 'Another demo video for testing',
-                videoUrl: 'https://www.youtube.com/embed/dQw4w9WgXcQ',
-                thumbnail: 'https://via.placeholder.com/600x400',
-                duration: '2:30',
-                categoryName: 'Sports',
-                category: 'sports-cat',
-                author: 'Admin',
-                views: 50,
-                language: 'english',
-                videoLanguage: 'english', // Added to match updated schema
-                tags: ['sports', 'demo'],
-                isActive: true,
-                isFeatured: false,
-                createdAt: new Date().toISOString(),
-                updatedAt: new Date().toISOString()
-              }
-            ]);
-            setLoading(false);
-            toast({
-              title: "Sample Data Loaded",
-              description: "Demo videos have been loaded for testing"
-            });
-          }}
-        >
-          <Shield className="mr-2 h-4 w-4" /> Load Sample Data
-        </Button>
       </div>
       
       {loading ? (

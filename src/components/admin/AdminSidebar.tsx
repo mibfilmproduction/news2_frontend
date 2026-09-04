@@ -21,6 +21,7 @@ import {
   MonitorSmartphone
 } from "lucide-react";
 import logo from '@/assets/logo.png';
+import { useAuth } from '@/hooks/useAuth';
 
 type SidebarItem = {
   title: string;
@@ -133,20 +134,11 @@ const sidebarItems: SidebarItem[] = [
   },
 ];
 
-// Read current user role for role-based menu filtering
-const getUserRole = (): string => {
-  try {
-    const user = JSON.parse(localStorage.getItem("user") || "null");
-    return user?.role || "user";
-  } catch {
-    return "user";
-  }
-};
-
 const AdminSidebar = () => {
   const location = useLocation();
   const pathname = location.pathname;
-  const userRole = getUserRole();
+  const { user } = useAuth();
+  const userRole = user?.role || "user";
 
   // State to track which submenus are open
   const [openSubmenus, setOpenSubmenus] = useState<Record<string, boolean>>({});

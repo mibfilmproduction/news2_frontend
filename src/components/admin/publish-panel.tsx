@@ -41,6 +41,7 @@ export function PublishPanel({ onPublish, onSchedule, onSaveDraft, isSaving, cur
   };
 
   const handleScheduleConfirm = () => {
+    if (!scheduleDate || new Date(scheduleDate).getTime() <= Date.now()) return;
     onSchedule(scheduleDate);
     setShowSchedule(false);
   };
@@ -60,7 +61,7 @@ export function PublishPanel({ onPublish, onSchedule, onSaveDraft, isSaving, cur
   };
 
   return (
-    <Card className="sticky top-20 border-primary shadow-lg">
+    <Card className="border-primary shadow-sm">
       <CardHeader className="pb-2">
         <CardTitle className="flex items-center gap-2">
           <Save className="h-5 w-5 text-primary" />
@@ -91,9 +92,8 @@ export function PublishPanel({ onPublish, onSchedule, onSaveDraft, isSaving, cur
           <Select
             value={currentStatus === "scheduled" ? "scheduled" : currentStatus === "published" ? "public" : "private"}
             onValueChange={(value) => {
-              if (value === "public") onPublish();
-              else if (value === "private") onSaveDraft();
-              else handleScheduleClick();
+              // Changing this selector must not accidentally publish or save.
+              if (value === "scheduled") handleScheduleClick();
             }}
           >
             <SelectTrigger>
@@ -137,6 +137,9 @@ export function PublishPanel({ onPublish, onSchedule, onSaveDraft, isSaving, cur
               <Button size="sm" onClick={handleScheduleConfirm}>
                 Schedule
               </Button>
+              {scheduleDate && new Date(scheduleDate).getTime() <= Date.now() && (
+                <p className="text-xs text-red-600">Choose a future date and time.</p>
+              )}
             </div>
           </div>
         )}

@@ -114,17 +114,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setIsLoading(true);
       setError(null);
 
-      console.log('useAuth.login: Calling authApi.login with', { email, passwordLength: password.length });
-
       const response = await authApi.login({ email, password });
-
-      console.log('useAuth.login: Response from authApi.login:', { success: response.success, hasData: !!response.data, dataKeys: response.data ? Object.keys(response.data) : null, message: response.message });
 
       if (response.success && response.data) {
         // Backend returns user with token inside it
         const userData = response.data.user;
         const token = userData.token;
-        console.log('useAuth.login: Extracted userData:', { hasUser: !!userData, hasToken: !!token });
+        if (!userData || !token) {
+          throw new Error('Invalid authentication response');
+        }
         storeAuthData(userData, token);
         return { success: true };
       } else {

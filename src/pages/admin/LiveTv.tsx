@@ -381,28 +381,12 @@ const AdminLiveTvPage: React.FC = () => {
   const handleShareNews = async () => {
     if (!currentShareChannel) return;
 
-    setShareLoading(true);
-    try {
-      // In a real implementation, you would post this to your backend
-      // Here we'll simulate a successful share after a delay
-      await new Promise(resolve => setTimeout(resolve, 1500));
-
-      // Close dialog and show success toast
-      setIsShareDialogOpen(false);
-      toast({
-        title: 'News Shared Successfully',
-        description: `Your news has been shared to ${currentShareChannel.title} channel`,
-      });
-    } catch (error) {
-      console.error('Error sharing news:', error);
-      toast({
-        title: 'Share Failed',
-        description: 'Could not share news. Please try again.',
-        variant: 'destructive'
-      });
-    } finally {
-      setShareLoading(false);
-    }
+    setShareLoading(false);
+    toast({
+      title: 'Sharing is not configured',
+      description: 'Connect a supported broadcast provider before sharing news to this channel.',
+      variant: 'destructive'
+    });
   };
 
   // Toggle self news mode
