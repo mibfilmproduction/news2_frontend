@@ -68,15 +68,15 @@ const NavbarTop = () => {
     to === '/' ? location.pathname === '/' : location.pathname.startsWith(to);
 
   return (
-    <div className="w-full bg-white border-b border-gray-200">
+    <div className="w-full overflow-hidden bg-white border-b border-gray-200">
       <div className="container mx-auto px-4">
-        <div className="flex items-center justify-between h-16">
+        <div className="flex h-16 items-center justify-between overflow-hidden">
           {/* Logo */}
-          <Link to="/" className="flex items-center shrink-0">
+          <Link to="/" className="flex h-full w-[100px] shrink-0 items-center overflow-hidden">
             <img 
               src={logo} 
               alt="Logo" 
-              className="h-10 w-auto md:h-12 lg:h-14 max-w-[180px] object-contain" 
+              className="block h-full w-full object-cover object-center" 
             />
           </Link>
 
