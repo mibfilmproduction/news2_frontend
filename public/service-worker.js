@@ -7,12 +7,8 @@ const STATIC_ASSETS = [
   '/',
   '/index.html',
   '/offline.html',
-  '/favicon.ico',
-  '/logo.png',
+  '/logo.jpeg',
   '/manifest.json',
-  '/icons/icon-144x144.png',
-  '/icons/icon-192x192.png',
-  '/icons/icon-512x512.png',
   '/icons/apple-touch-icon.png'
 ];
 
@@ -120,8 +116,8 @@ self.addEventListener('push', (event) => {
   
   const options = {
     body: data.body,
-    icon: '/icons/icon-144x144.png',
-    badge: '/icons/icon-144x144.png',
+    icon: '/logo.jpeg',
+    badge: '/logo.jpeg',
     data: {
       url: data.url
     }

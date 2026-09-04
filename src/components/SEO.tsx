@@ -32,7 +32,7 @@ interface SEOProps {
 const siteName = 'Mibnews';
 const siteDescription = 'Delivering the latest breaking news and top stories across politics, entertainment, sports, business from India and around the world.';
 const defaultDescription = 'The latest news and updates from Mibnews - Your trusted source for breaking news in Hindi and English';
-const defaultImage = '/logo.png';
+const defaultImage = '/logo.jpeg';
 const twitterHandle = '@mibnews';
 const facebookPage = 'mibnews';
 
@@ -136,7 +136,7 @@ const SEO: React.FC<SEOProps> = ({
       name: String(siteName),
       logo: {
         '@type': 'ImageObject',
-        url: `${import.meta.env.VITE_SITE_URL || window.location.origin}/logo.png`
+        url: `${import.meta.env.VITE_SITE_URL || window.location.origin}/logo.jpeg`
       }
     },
     mainEntityOfPage: {
@@ -200,7 +200,7 @@ const SEO: React.FC<SEOProps> = ({
           '@type': 'NewsMediaOrganization',
           name: String(siteName),
           url: String(import.meta.env.VITE_SITE_URL || window.location.origin),
-          logo: `${import.meta.env.VITE_SITE_URL || window.location.origin}/logo.png`,
+          logo: `${import.meta.env.VITE_SITE_URL || window.location.origin}/logo.jpeg`,
           sameAs: [
             `https://www.facebook.com/${facebookPage}`,
             `https://twitter.com/${twitterHandle.replace('@', '')}`,
@@ -242,7 +242,7 @@ const SEO: React.FC<SEOProps> = ({
               name: String(siteName),
               logo: {
                 '@type': 'ImageObject',
-                url: `${import.meta.env.VITE_SITE_URL || window.location.origin}/logo.png`
+                url: `${import.meta.env.VITE_SITE_URL || window.location.origin}/logo.jpeg`
               }
             }
           }))}
@@ -311,7 +311,7 @@ const SEO: React.FC<SEOProps> = ({
       <link rel="canonical" href={pageUrl} />
       
       {/* Favicons */}
-      <link rel="icon" href="/favicon.ico" />
+      <link rel="icon" type="image/jpeg" href="/logo.jpeg" />
       <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
       <link rel="manifest" href="/manifest.json" />
     </Helmet>

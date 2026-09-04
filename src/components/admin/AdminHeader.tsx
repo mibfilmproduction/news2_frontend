@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Bell, LogOut, Settings } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
-import logo from '@/assets/logo.png'
+import logo from '@/assets/mib-news-logo.jpeg'
 import { useAuth } from '@/hooks/useAuth';
 
 const AdminHeader = () => {

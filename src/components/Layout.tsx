@@ -4,7 +4,7 @@ import { Outlet, Link } from 'react-router-dom';
 import NavbarTop from './NavbarTop';
 import BreakingNews from './BreakingNews';
 import CookieConsent from './CookieConsent';
-import logo from "@/assets/MIBNEWS.IN LOGO.png"
+import logo from "@/assets/mib-news-logo.jpeg"
 
 const Layout = () => {
   return (

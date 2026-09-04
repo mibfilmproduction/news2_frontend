@@ -253,7 +253,7 @@ const HomePage = () => {
         description={generateDescription()}
         keywords={generateKeywords()}
         type="website"
-        image={articles.length > 0 && articles[0].image ? getImageUrl(articles[0].image) : "/logo.png"}
+        image={articles.length > 0 && articles[0].image ? getImageUrl(articles[0].image) : "/logo.jpeg"}
         breadcrumbs={[]}
       />
       

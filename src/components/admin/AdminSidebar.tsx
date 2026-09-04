@@ -20,7 +20,7 @@ import {
   Briefcase,
   MonitorSmartphone
 } from "lucide-react";
-import logo from '@/assets/logo.png';
+import logo from '@/assets/mib-news-logo.jpeg';
 import { useAuth } from '@/hooks/useAuth';
 
 type SidebarItem = {

@@ -364,7 +364,7 @@ export function SEOPanel({ form, article }: SEOPanelProps) {
                 name: "Your Site Name",
                 logo: {
                   "@type": "ImageObject",
-                  url: "https://yoursite.com/logo.png"
+                  url: `${window.location.origin}/logo.jpeg`
                 }
               },
               mainEntityOfPage: {

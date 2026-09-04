@@ -11,7 +11,7 @@ import {
   DropdownMenuTrigger
 } from "@/components/ui/dropdown-menu";
 import UserMenu from "./UserMenu";
-import logo from "@/assets/logo.png";
+import logo from "@/assets/mib-news-logo.jpeg";
 import { getCategories, CategoryType } from "@/services/categoryService";
 import { cn } from "@/lib/utils";
 
