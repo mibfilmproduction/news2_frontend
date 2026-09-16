@@ -10,7 +10,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Loader2 } from "lucide-react";
 import { authApi } from "@/lib/api-client";
-import logo from '@/assets/mib-news-logo.jpeg';
+import logo from '@/assets/mibnews-logo.png';
 
 const LoginForm = () => {
   const [email, setEmail] = useState("");

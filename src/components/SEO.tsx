@@ -32,7 +32,7 @@ interface SEOProps {
 const siteName = 'Mibnews';
 const siteDescription = 'Delivering the latest breaking news and top stories across politics, entertainment, sports, business from India and around the world.';
 const defaultDescription = 'The latest news and updates from Mibnews - Your trusted source for breaking news in Hindi and English';
-const defaultImage = '/logo.jpeg';
+const defaultImage = '/mibnews-logo.png';
 const twitterHandle = '@mibnews';
 const facebookPage = 'mibnews';
 
@@ -136,7 +136,7 @@ const SEO: React.FC<SEOProps> = ({
       name: String(siteName),
       logo: {
         '@type': 'ImageObject',
-        url: `${import.meta.env.VITE_SITE_URL || window.location.origin}/logo.jpeg`
+        url: `${import.meta.env.VITE_SITE_URL || window.location.origin}/mibnews-logo.png`
       }
     },
     mainEntityOfPage: {
@@ -200,7 +200,7 @@ const SEO: React.FC<SEOProps> = ({
           '@type': 'NewsMediaOrganization',
           name: String(siteName),
           url: String(import.meta.env.VITE_SITE_URL || window.location.origin),
-          logo: `${import.meta.env.VITE_SITE_URL || window.location.origin}/logo.jpeg`,
+          logo: `${import.meta.env.VITE_SITE_URL || window.location.origin}/mibnews-logo.png`,
           sameAs: [
             `https://www.facebook.com/${facebookPage}`,
             `https://twitter.com/${twitterHandle.replace('@', '')}`,
@@ -242,7 +242,7 @@ const SEO: React.FC<SEOProps> = ({
               name: String(siteName),
               logo: {
                 '@type': 'ImageObject',
-                url: `${import.meta.env.VITE_SITE_URL || window.location.origin}/logo.jpeg`
+                url: `${import.meta.env.VITE_SITE_URL || window.location.origin}/mibnews-logo.png`
               }
             }
           }))}

@@ -9,7 +9,7 @@
   "orientation": "portrait-primary",
   "icons": [
     {
-      "src": "/mib-favicon.png",
+      "src": "/mibnews-logo.png",
       "sizes": "any",
       "type": "image/png",
       "purpose": "any"

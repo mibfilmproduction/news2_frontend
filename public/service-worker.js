@@ -7,7 +7,7 @@ const STATIC_ASSETS = [
   '/',
   '/index.html',
   '/offline.html',
-  '/logo.jpeg',
+  '/mibnews-logo.png',
   '/mib-favicon.png',
   '/manifest.json',
   '/icons/apple-touch-icon.png'
@@ -117,8 +117,8 @@ self.addEventListener('push', (event) => {
   
   const options = {
     body: data.body,
-    icon: '/logo.jpeg',
-    badge: '/logo.jpeg',
+    icon: '/mibnews-logo.png',
+    badge: '/mibnews-logo.png',
     data: {
       url: data.url
     }
