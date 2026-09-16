@@ -1,16 +1,133 @@
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Outlet, Link } from 'react-router-dom';
 import NavbarTop from './NavbarTop';
 import BreakingNews from './BreakingNews';
 import CookieConsent from './CookieConsent';
+import { useLanguage } from './LanguageSwitcher';
+import { getCategories, CategoryType } from '@/services/categoryService';
+import { siteSettingApi, newsletterApi } from '@/lib/api-client';
+import {
+  Facebook,
+  Twitter,
+  Instagram,
+  Youtube,
+  Mail,
+  MapPin,
+  Phone,
+  Send,
+  ChevronRight,
+  ArrowUp,
+  Loader2,
+} from 'lucide-react';
 import logo from "@/assets/mibnews-logo.png"
 
+const QUICK_LINKS = [
+  { label: 'Home', to: '/' },
+  { label: 'Latest News', to: '/latest' },
+  { label: 'Breaking News', to: '/breaking' },
+  { label: 'National', to: '/national' },
+  { label: 'World', to: '/world' },
+  { label: 'Entertainment', to: '/entertainment' },
+  { label: 'Sports', to: '/sports' },
+];
+
+const COMPANY_LINKS = [
+  { label: 'Contact Us', to: '/contact' },
+  { label: 'Privacy Policy', to: '/privacy-policy' },
+  { label: 'Careers', to: '/career' },
+  { label: 'Short Posts', to: '/short-posts' },
+  { label: 'Reels', to: '/reels' },
+  { label: 'Videos', to: '/videos' },
+  { label: 'Live TV', to: '/live-tv' },
+];
+
+const SOCIAL_LINKS = [
+  { label: 'Twitter / X', href: 'https://x.com', Icon: Twitter },
+  { label: 'Facebook', href: 'https://facebook.com', Icon: Facebook },
+  { label: 'Instagram', href: 'https://instagram.com', Icon: Instagram },
+  { label: 'YouTube', href: 'https://youtube.com', Icon: Youtube },
+];
+
+const SectionHeading = ({ children }: { children: React.ReactNode }) => (
+  <h3 className="text-sm font-bold uppercase tracking-widest text-white">
+    {children}
+    <span className="mt-2 block h-0.5 w-10 rounded bg-red-600" />
+  </h3>
+);
+
 const Layout = () => {
+  const { language } = useLanguage();
+  const [categories, setCategories] = useState<CategoryType[]>([]);
+  const [siteTitle, setSiteTitle] = useState('Mibnews');
+  const [siteTagline, setSiteTagline] = useState(
+    'Delivering the latest breaking news and top stories across politics, entertainment, sports, business from India and around the world.'
+  );
+
+  const [newsletterEmail, setNewsletterEmail] = useState('');
+  const [nlState, setNlState] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
+  const [nlMessage, setNlMessage] = useState('');
+
+  // Dynamic site identity (title + tagline) from backend public settings
+  useEffect(() => {
+    let mounted = true;
+    siteSettingApi
+      .getPublicSettings()
+      .then((res) => {
+        if (!mounted || !res?.success || !res?.data) return;
+        if (res.data.siteTitle) setSiteTitle(String(res.data.siteTitle));
+        if (res.data.siteTagline) setSiteTagline(String(res.data.siteTagline));
+      })
+      .catch(() => {
+        /* keep defaults when backend is unreachable */
+      });
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  // Dynamic categories for the footer
+  useEffect(() => {
+    let mounted = true;
+    getCategories({ active: true, language })
+      .then((cats) => {
+        if (mounted) setCategories((cats || []).slice(0, 7));
+      })
+      .catch(() => {
+        if (mounted) setCategories([]);
+      });
+    return () => {
+      mounted = false;
+    };
+  }, [language]);
+
+  const handleSubscribe = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const email = newsletterEmail.trim();
+    if (!email) {
+      setNlState('error');
+      setNlMessage('Please enter your email address.');
+      return;
+    }
+    setNlState('loading');
+    setNlMessage('');
+    try {
+      const res = await newsletterApi.subscribe(email);
+      setNlState('success');
+      setNlMessage(res?.message || 'Subscribed successfully. Welcome aboard!');
+      setNewsletterEmail('');
+    } catch (err) {
+      setNlState('error');
+      setNlMessage(err instanceof Error ? err.message : 'Subscription failed. Please try again.');
+    }
+  };
+
+  const scrollToTop = () => window.scrollTo({ top: 0, behavior: 'smooth' });
+
   return (
     <div className="min-h-screen flex flex-col bg-gray-50">
       <header className="sticky top-0 z-30 bg-white shadow-sm">
-        <NavbarTop /> 
+        <NavbarTop />
       </header>
 
       <BreakingNews />
@@ -19,54 +136,191 @@ const Layout = () => {
         <Outlet />
       </main>
 
-      <footer className="bg-gray-900 text-white py-8">
-        <div className="container mx-auto px-4">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 justify-between">
-            <div className='justify-center text-center'>
-              {/* <h3 className="text-lg font-bold mb-4"></h3> */}
-              <img src={logo} alt="Logo" width={200} height={150} className='mx-auto' />
-              <p className="text-gray-300 mt-4">
-                Mibnews delivers the latest breaking news and top stories across politics, entertainment, sports, business, and more.
-              </p>
+      <footer className="bg-gray-950 text-gray-300">
+        {/* Brand accent strip */}
+        <div className="h-1 w-full bg-gradient-to-r from-red-600 via-red-500 to-blue-900" />
+
+        <div className="container mx-auto px-4 py-12">
+          <div className="grid grid-cols-1 gap-10 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5">
+            {/* Brand + contact */}
+            <div>
+              <Link to="/" className="inline-block rounded-xl bg-white px-4 py-2 shadow-lg">
+                <img src={logo} alt={`${siteTitle} logo`} className="h-12 w-auto" />
+              </Link>
+              <p className="mt-4 text-sm leading-relaxed text-gray-400">{siteTagline}</p>
+
+              <p className="mt-5 text-sm font-semibold text-white">Subscribe to newsletter</p>
+              <form onSubmit={handleSubscribe} className="mt-3">
+                <div className="flex overflow-hidden rounded-lg border border-white/10 bg-white/5 focus-within:border-red-600">
+                  <input
+                    type="email"
+                    value={newsletterEmail}
+                    onChange={(e) => setNewsletterEmail(e.target.value)}
+                    placeholder="Your email address"
+                    aria-label="Email address"
+                    className="w-full min-w-0 bg-transparent px-3 py-2.5 text-sm text-white placeholder:text-gray-500 focus:outline-none"
+                  />
+                  <button
+                    type="submit"
+                    disabled={nlState === 'loading'}
+                    aria-label="Subscribe"
+                    className="flex shrink-0 items-center gap-1.5 bg-red-600 px-4 text-sm font-semibold text-white transition hover:bg-red-700 disabled:opacity-60"
+                  >
+                    {nlState === 'loading' ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Send className="h-4 w-4" />
+                    )}
+                  </button>
+                </div>
+                {nlMessage && (
+                  <p
+                    className={`mt-2 text-xs ${
+                      nlState === 'success' ? 'text-green-400' : 'text-red-400'
+                    }`}
+                  >
+                    {nlMessage}
+                  </p>
+                )}
+              </form>
             </div>
 
-            <div className='justify-center text-center'>
+            {/* Quick links */}
+            <nav aria-label="Quick links">
+              <SectionHeading>Quick Links</SectionHeading>
+              <ul className="mt-5 space-y-2.5 text-sm">
+                {QUICK_LINKS.map((link) => (
+                  <li key={link.to + link.label}>
+                    <Link
+                      to={link.to}
+                      className="group inline-flex items-center gap-1.5 text-gray-400 transition hover:text-white"
+                    >
+                      <ChevronRight className="h-3.5 w-3.5 text-red-600 transition-transform group-hover:translate-x-0.5" />
+                      {link.label}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </nav>
 
-              <h3 className="text-lg font-bold mb-4">Useful Links</h3>
-              <ul className="space-y-2 justify-center text-center ">
-                <li><Link to="/contact" className="text-gray-300 hover:text-white">Contact Us</Link></li>
-                <li><Link to="/privacy-policy" className="text-gray-300 hover:text-white">Privacy Policy</Link></li>
-                <li><Link to="/short-posts" className="text-gray-300 hover:text-white">Short Posts</Link></li>
-                <li><Link to="/reels" className="text-gray-300 hover:text-white">Reels</Link></li>
-                <li><Link to="/career" className="text-gray-300 hover:text-white">Careers</Link></li>
-                <li><Link to="/videos" className="text-gray-300 hover:text-white">Videos</Link></li>
+            {/* Dynamic categories */}
+            <nav aria-label="News categories">
+              <SectionHeading>Categories</SectionHeading>
+              <ul className="mt-5 space-y-2.5 text-sm">
+                {categories.length > 0 ? (
+                  categories.map((cat) => (
+                    <li key={cat._id || cat.slug || cat.name}>
+                      <Link
+                        to={`/category/${cat.slug || cat._id}`}
+                        className="group inline-flex items-center gap-1.5 text-gray-400 transition hover:text-white"
+                      >
+                        <ChevronRight className="h-3.5 w-3.5 text-red-600 transition-transform group-hover:translate-x-0.5" />
+                        {cat.name}
+                      </Link>
+                    </li>
+                  ))
+                ) : (
+                  <>
+                    <li className="text-gray-500">Politics</li>
+                    <li className="text-gray-500">Business</li>
+                    <li className="text-gray-500">Technology</li>
+                    <li className="text-gray-500">Health</li>
+                  </>
+                )}
+              </ul>
+            </nav>
+
+            {/* Company */}
+            <div>
+              <SectionHeading>Company</SectionHeading>
+              <ul className="mt-5 space-y-2.5 text-sm">
+                {COMPANY_LINKS.map((link) => (
+                  <li key={link.to + link.label}>
+                    <Link
+                      to={link.to}
+                      className="group inline-flex items-center gap-1.5 text-gray-400 transition hover:text-white"
+                    >
+                      <ChevronRight className="h-3.5 w-3.5 text-red-600 transition-transform group-hover:translate-x-0.5" />
+                      {link.label}
+                    </Link>
+                  </li>
+                ))}
               </ul>
             </div>
 
-            <div className='justify-center text-center'>
-              <h3 className="text-lg font-bold mb-4">Connect With Us</h3>
-              <div className="flex space-x-4 justify-center text-center">
-                <a href="https://x.com" target="_blank" rel="noreferrer" className="text-gray-300 hover:text-white" aria-label="Twitter">
-                  <svg className="h-6 w-6" fill="currentColor" viewBox="0 0 24 24"><path d="M22 12.07a10 10 0 01-10 10 10 10 0 01-10-10 10 10 0 0110-10 10 10 0 0110 10zm-11.07-3.94h1.97c.14 0 .22.11.22.22v1.45h1.19c.11 0 .22.11.22.22v1.97c0 .11-.11.22-.22.22h-1.19v4.32c0 .33.25.58.55.58h.64c.11 0 .22.11.22.22v1.97c0 .11-.11.22-.22.22h-1.41c-1.69 0-3.05-1.36-3.05-3.05v-4.24h-.64c-.11 0-.22-.11-.22-.22v-1.97c0-.11.11-.22.22-.22h.64v-1.45c0-.11.11-.22.22-.22z"></path></svg>
+            {/* Connect + contact (last column) */}
+            <div>
+              <SectionHeading>Connect With Us</SectionHeading>
+              <p className="mt-5 text-sm font-semibold text-white">Follow Us</p>
+              <div className="mt-3 flex items-center gap-3">
+                {SOCIAL_LINKS.map(({ label, href, Icon }) => (
+                  <a
+                    key={label}
+                    href={href}
+                    target="_blank"
+                    rel="noreferrer"
+                    aria-label={label}
+                    className="flex h-9 w-9 items-center justify-center rounded-full bg-white/10 text-gray-300 transition hover:bg-red-600 hover:text-white"
+                  >
+                    <Icon className="h-4 w-4" />
+                  </a>
+                ))}
+              </div>
+
+              <p className="mt-6 text-sm font-semibold text-white">Contact Us</p>
+              <div className="mt-3 space-y-2.5 text-sm text-gray-400">
+                <p className="flex items-start gap-2">
+                  <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-red-500" />
+                  <span>
+                    O-794, 7th Floor, Gaur City Center,
+                    <br />
+                    Greater Noida West, UP 201318
+                  </span>
+                </p>
+                <a
+                  href="mailto:info@mibnews.in"
+                  className="flex items-center gap-2 transition hover:text-white"
+                >
+                  <Mail className="h-4 w-4 shrink-0 text-red-500" />
+                  info@mibnews.in
                 </a>
-                <a href="https://facebook.com" target="_blank" rel="noreferrer" className="text-gray-300 hover:text-white" aria-label="Facebook">
-                  <svg className="h-6 w-6" fill="currentColor" viewBox="0 0 24 24"><path d="M22 12c0-5.52-4.48-10-10-10S2 6.48 2 12c0 4.84 3.44 8.87 8 9.8V15H8v-3h2V9.5C10 7.57 11.57 6 13.5 6H16v3h-2c-.55 0-1 .45-1 1v2h3v3h-3v6.95c5.05-.5 9-4.76 9-9.95z"></path></svg>
-                </a>
-                <a href="https://instagram.com" target="_blank" rel="noreferrer" className="text-gray-300 hover:text-white" aria-label="Instagram">
-                  <svg className="h-6 w-6" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm5.01 14.33c-.15.3-.46.46-.78.33-2.13-.97-4.8-1.19-7.96-.65-.32.06-.66-.15-.74-.48-.07-.33.15-.66.48-.74 3.45-.62 6.38-.35 8.69.75.3.14.42.48.28.79zm1.34-2.97c-.19.38-.61.54-.99.35-2.44-1.49-6.16-1.92-9.04-1.06-.37.11-.76-.1-.87-.47-.11-.38.1-.76.47-.87 3.28-1 7.36-.5 10.14 1.2.38.19.54.61.35.99l-.06-.14zm.12-3.09c-2.93-1.74-7.76-1.9-10.55-1.05-.46.13-.93-.13-1.07-.58-.13-.45.13-.93.58-1.06 3.2-.97 8.52-.78 11.89 1.21.45.26.59.84.33 1.28-.26.43-.83.57-1.28.31l.1-.11z"></path></svg>
-                </a>
-                <a href="https://youtube.com" target="_blank" rel="noreferrer" className="text-gray-300 hover:text-white" aria-label="YouTube">
-                  <svg className="h-6 w-6" fill="currentColor" viewBox="0 0 24 24"><path d="M23.5 6.19a3.02 3.02 0 00-2.12-2.14C19.5 3.55 12 3.55 12 3.55s-7.5 0-9.38.5A3.02 3.02 0 00.5 6.19C0 8.07 0 12 0 12s0 3.93.5 5.81a3.02 3.02 0 002.12 2.14c1.88.5 9.38.5 9.38.5s7.5 0 9.38-.5a3.02 3.02 0 002.12-2.14C24 15.93 24 12 24 12s0-3.93-.5-5.81zM9.6 15.6V8.4L15.8 12l-6.2 3.6z"></path></svg>
+                <a
+                  href="tel:+919999292210"
+                  className="flex items-center gap-2 transition hover:text-white"
+                >
+                  <Phone className="h-4 w-4 shrink-0 text-red-500" />
+                  +91 99992 92210
                 </a>
               </div>
             </div>
-
           </div>
+        </div>
 
-          <div className="mt-8 pt-6 border-t border-gray-800 text-sm text-gray-400 text-center">
-            &copy; {new Date().getFullYear()} Mibnews. All Rights Reserved.
+        {/* Bottom bar */}
+        <div className="border-t border-white/10">
+          <div className="container mx-auto flex flex-col items-center justify-between gap-4 px-4 py-5 text-xs text-gray-500 md:flex-row">
+            <p>
+              &copy; {new Date().getFullYear()} {siteTitle}. All Rights Reserved.
+            </p>
+            <div className="flex items-center gap-5">
+              <Link to="/privacy-policy" className="transition hover:text-white">
+                Privacy Policy
+              </Link>
+              <Link to="/contact" className="transition hover:text-white">
+                Contact
+              </Link>
+              <Link to="/career" className="transition hover:text-white">
+                Careers
+              </Link>
+            </div>
+            <button
+              onClick={scrollToTop}
+              aria-label="Back to top"
+              className="flex h-9 w-9 items-center justify-center rounded-full bg-white/10 text-gray-300 transition hover:bg-red-600 hover:text-white"
+            >
+              <ArrowUp className="h-4 w-4" />
+            </button>
           </div>
-          
         </div>
       </footer>
       <CookieConsent />

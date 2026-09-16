@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useLayoutEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Search, Menu, Bell, ChevronDown } from 'lucide-react';
 import { Button } from "@/components/ui/button";
@@ -67,16 +67,65 @@ const NavbarTop = () => {
   const isActive = (to: string) =>
     to === '/' ? location.pathname === '/' : location.pathname.startsWith(to);
 
+  // ---- Desktop nav: fit links in 85% width, rest goes to "More" (no scroll) ----
+  const allNavLinks = [
+    ...STATIC_LINKS.map((l) => ({
+      key: `static-${l.to}`,
+      label: l.label,
+      to: l.to,
+      live: (l as { live?: boolean }).live,
+    })),
+    ...categories.map((c) => ({
+      key: `cat-${c._id}`,
+      label: c.name,
+      to: `/category/${c.slug}`,
+      live: false as boolean | undefined,
+    })),
+  ];
+  const [visibleCount, setVisibleCount] = useState(10);
+  const navRowRef = useRef<HTMLDivElement | null>(null);
+  const measureRef = useRef<HTMLDivElement | null>(null);
+
+  useLayoutEffect(() => {
+    const fit = () => {
+      const row = navRowRef.current;
+      const measure = measureRef.current;
+      if (!row || !measure) return;
+      // 85% of the row for links, rest reserved for the "More" button sitting just after them
+      const available = Math.floor(row.clientWidth * 0.85);
+      const kids = Array.from(measure.children) as HTMLElement[];
+      const GAP = 20; // gap-5
+      let used = 0;
+      let count = 0;
+      for (const kid of kids) {
+        const w = kid.offsetWidth;
+        if (used + w <= available) {
+          used += w + GAP;
+          count += 1;
+        } else {
+          break;
+        }
+      }
+      setVisibleCount(Math.max(3, Math.min(count, kids.length)));
+    };
+    fit();
+    window.addEventListener('resize', fit);
+    return () => window.removeEventListener('resize', fit);
+  }, [categories, language, isCategoriesLoading]);
+
+  const visibleLinks = allNavLinks.slice(0, visibleCount);
+  const overflowLinks = allNavLinks.slice(visibleCount);
+
   return (
     <div className="w-full overflow-hidden bg-white border-b border-gray-200">
       <div className="container mx-auto px-4">
-        <div className="flex h-16 items-center justify-between overflow-hidden">
+        <div className="flex h-18 items-center justify-between overflow-hidden py-0">
           {/* Logo */}
-          <Link to="/" className="flex h-full w-[100px] shrink-0 items-center overflow-hidden">
+          <Link to="/" className="flex h-full w-[120px]   shrink-0 items-center overflow-hidden py-2 my-0 leading-none">
             <img 
               src={logo} 
               alt="Logo" 
-              className="block h-full w-full object-cover object-center" 
+              className="block h-full w-full object-contain object-center p-0 m-0" 
             />
           </Link>
 
@@ -178,56 +227,64 @@ const NavbarTop = () => {
 
       {/* Category Navigation */}
       <div className="border-t border-gray-200 bg-white">
-        <div className="container mx-auto px-4">
-          {/* Desktop Categories Menu */}
-          <div className="hidden md:flex items-center space-x-5 overflow-x-auto py-3 text-sm font-medium">
-            {STATIC_LINKS.map((link) => (
-              <Link
-                key={link.to}
-                to={link.to}
-                className={cn(
-                  "whitespace-nowrap hover:text-primary flex items-center",
-                  isActive(link.to) ? "text-primary font-semibold" : "text-gray-800"
-                )}
-              >
-                {link.live && (
-                  <span className="inline-flex h-2 w-2 bg-red-600 rounded-full mr-1.5 animate-pulse" />
-                )}
-                {link.label}
-              </Link>
-            ))}
+        <div className="container relative mx-auto px-4">
+          {/* Desktop Categories Menu - max 85% width, overflow goes to "More", no scrollbar */}
+          <div ref={navRowRef} className="hidden md:flex items-center justify-start gap-4 py-3 text-sm font-medium">
+            <div className="flex min-w-0 max-w-[85%] items-center gap-5 overflow-hidden">
+              {visibleLinks.map((link) => (
+                <Link
+                  key={link.key}
+                  to={link.to}
+                  className={cn(
+                    "whitespace-nowrap hover:text-primary flex shrink-0 items-center",
+                    isActive(link.to) ? "text-primary font-semibold" : "text-gray-800"
+                  )}
+                >
+                  {link.live && (
+                    <span className="inline-flex h-2 w-2 bg-red-600 rounded-full mr-1.5 animate-pulse" />
+                  )}
+                  {link.label}
+                </Link>
+              ))}
+            </div>
 
-            {!isCategoriesLoading && categories.slice(0, 6).map((category) => (
-              <Link
-                key={category._id}
-                to={`/category/${category.slug}`}
-                className={cn(
-                  "whitespace-nowrap hover:text-primary",
-                  isActive(`/category/${category.slug}`) ? "text-primary font-semibold" : "text-gray-800"
-                )}
-              >
-                {category.name}
-              </Link>
-            ))}
-
-            {categories.length > 6 && (
+            {overflowLinks.length > 0 && (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="sm" className="text-gray-800 flex items-center p-0 h-auto font-medium">
+                  <Button variant="ghost" size="sm" className="shrink-0 text-gray-800 flex items-center p-0 h-auto font-medium">
                     More <ChevronDown className="ml-1 h-4 w-4" />
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
-                  {categories.slice(6).map((category) => (
-                    <DropdownMenuItem key={category._id} asChild>
-                      <Link to={`/category/${category.slug}`} className="w-full">
-                        {category.name}
+                  {overflowLinks.map((link) => (
+                    <DropdownMenuItem key={link.key} asChild>
+                      <Link to={link.to} className="w-full flex items-center">
+                        {link.live && (
+                          <span className="inline-flex h-2 w-2 bg-red-600 rounded-full mr-1.5 animate-pulse" />
+                        )}
+                        {link.label}
                       </Link>
                     </DropdownMenuItem>
                   ))}
                 </DropdownMenuContent>
               </DropdownMenu>
             )}
+          </div>
+
+          {/* Hidden measurer (same font/whitespace) to compute how many links fit in 85% */}
+          <div
+            ref={measureRef}
+            aria-hidden="true"
+            className="invisible absolute left-0 top-0 flex items-center gap-5 whitespace-nowrap text-sm font-medium"
+          >
+            {allNavLinks.map((link) => (
+              <span key={link.key} className="flex items-center">
+                {link.live && (
+                  <span className="inline-flex h-2 w-2 rounded-full mr-1.5" />
+                )}
+                {link.label}
+              </span>
+            ))}
           </div>
         </div>
       </div>
