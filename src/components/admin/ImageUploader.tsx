@@ -50,8 +50,20 @@ const ImageUploader: React.FC<ImageUploaderProps> = ({
       setUploadSuccess(true);
       toast.success("Image uploaded successfully");
     } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error occurred';
       console.error('Upload failed:', error);
-      toast.error(error instanceof Error ? error.message : 'Unknown error occurred');
+      toast.error(message);
+      // Clear the dead local preview so a failed (blob) image can never
+      // leak into the form — otherwise the backend would replace it with
+      // a placeholder on save.
+      if (previewUrl.startsWith('blob:')) {
+        URL.revokeObjectURL(previewUrl);
+      }
+      setPreviewUrl('');
+      setUploadSuccess(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
     } finally {
       setIsUploading(false);
     }

@@ -166,14 +166,6 @@ const Videos = () => {
         url="/videos"
         keywords={['news videos', 'latest videos', 'video news', 'watch news online', 'mibnews']}
       />
-      {/* Top Advertisement Banner - Full Width */}
-      {/* <div className="w-full bg-gray-100 p-4 text-center mb-6 rounded-md">
-        <div className="text-sm text-gray-500 mb-2">Advertisement</div>
-        <div className="bg-gray-200 h-24 flex items-center justify-center">
-          <span className="text-gray-400">Ad Space 960x90</span>
-        </div>
-      </div> */}
-
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-3xl font-bold">Latest Videos</h1>
 
@@ -411,13 +403,6 @@ const Videos = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Second Advertisement Space */}
-      <div className="w-full bg-gray-100 p-4 text-center mt-8 mb-6 rounded-md">
-        <div className="text-sm text-gray-500 mb-2">Advertisement</div>
-        <div className="bg-gray-200 h-24 flex items-center justify-center">
-          <span className="text-gray-400">Ad Space 960x90</span>
-        </div>
-      </div>
     </div>
   );
 };

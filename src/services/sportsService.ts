@@ -60,6 +60,11 @@ export interface Match {
 // Cache for sports data
 let sportsCache: { data: Sport[] | null; timestamp: number } = { data: null, timestamp: 0 };
 
+/** Clear cached sports so admin create/update/delete reflects immediately. */
+export const clearSportsCache = () => {
+  sportsCache = { data: null, timestamp: 0 };
+};
+
 export const getAllSports = async (params?: { active?: boolean }): Promise<Sport[]> => {
   try {
     const now = Date.now();
@@ -180,6 +185,7 @@ export const createSport = async (sportData: Omit<Sport, '_id' | 'id'>): Promise
   if (!response.success || !response.data) {
     throw new Error(response.message || 'Failed to create sport');
   }
+  clearSportsCache();
   return response.data;
 };
 
@@ -188,6 +194,7 @@ export const updateSport = async (id: string, sportData: Partial<Sport>): Promis
   if (!response.success || !response.data) {
     throw new Error(response.message || 'Failed to update sport');
   }
+  clearSportsCache();
   return response.data;
 };
 
@@ -196,6 +203,7 @@ export const deleteSport = async (id: string): Promise<void> => {
   if (!response.success) {
     throw new Error(response.message || 'Failed to delete sport');
   }
+  clearSportsCache();
 };
 
 export const createLeague = async (leagueData: Omit<League, '_id' | 'id'>): Promise<League> => {

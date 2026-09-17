@@ -126,3 +126,13 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* Hide the native date-input calendar icon wherever we render our own
+   overlay icon — otherwise two calendar icons appear side by side. */
+input.date-input-custom-icon::-webkit-calendar-picker-indicator {
+  display: none;
+  -webkit-appearance: none;
+}
+input.date-input-custom-icon::-moz-calendar-picker-indicator {
+  display: none;
+}

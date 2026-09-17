@@ -25,6 +25,7 @@ import {
 } from "@/components/ui/dialog";
 import { Plus, Trash2, GripVertical, Type, Hash, Image as ImageIcon, Calendar, ToggleLeft, Settings } from "lucide-react";
 import { cn } from "@/lib/utils";
+import MediaImageField from "@/components/admin/MediaImageField";
 
 interface CustomFieldsPanelProps {
   form: any;
@@ -144,17 +145,12 @@ export function CustomFieldsPanel({ form }: CustomFieldsPanelProps) {
         );
       case "image":
         return (
-          <div className="space-y-2">
-            <Input
-              type="url"
-              value={value}
-              onChange={(e) => updateFieldValue(key, e.target.value)}
-              placeholder="Image URL"
-            />
-            {value && (
-              <img src={value} alt={field.label} className="max-h-32 rounded" />
-            )}
-          </div>
+          <MediaImageField
+            value={value || ""}
+            onChange={(url) => updateFieldValue(key, url)}
+            folder="mibnews/custom-fields"
+            label={field.label || "Image"}
+          />
         );
       case "url":
         return (

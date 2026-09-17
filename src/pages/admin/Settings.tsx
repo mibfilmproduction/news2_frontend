@@ -11,6 +11,7 @@ import { Separator } from "@/components/ui/separator";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import SEO from "@/components/SEO";
 import { api } from "@/lib/api-client";
+import MediaImageField from "@/components/admin/MediaImageField";
 
 interface SettingsState {
   siteTitle: string;
@@ -187,12 +188,22 @@ const Settings = () => {
                 <Input id="admin-email" type="email" value={settings.adminEmail} onChange={(e) => updateField('adminEmail', e.target.value)} />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="logo">Logo URL</Label>
-                <Input id="logo" value={settings.logoUrl} onChange={(e) => updateField('logoUrl', e.target.value)} />
+                <Label>Site Logo</Label>
+                <MediaImageField
+                  value={settings.logoUrl}
+                  onChange={(url) => updateField('logoUrl', url)}
+                  folder="mibnews/site"
+                  label="Logo"
+                />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="favicon">Favicon URL</Label>
-                <Input id="favicon" value={settings.faviconUrl} onChange={(e) => updateField('faviconUrl', e.target.value)} />
+                <Label>Site Favicon</Label>
+                <MediaImageField
+                  value={settings.faviconUrl}
+                  onChange={(url) => updateField('faviconUrl', url)}
+                  folder="mibnews/site"
+                  label="Favicon"
+                />
               </div>
             </CardContent>
             <CardFooter>

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import SEO from '../components/SEO';
 import { 
   getAllSports, 
@@ -30,6 +30,7 @@ const Sports = () => {
   const [activeTab, setActiveTab] = useState("featured");
   const [activeSport, setActiveSport] = useState<string | null>(null);
   const navigate = useNavigate();
+  const { sportSlug } = useParams<{ sportSlug: string }>();
   
   useEffect(() => {
     const fetchData = async () => {
@@ -45,12 +46,20 @@ const Sports = () => {
           if (Array.isArray(apiSportsData)) {
             setSports(apiSportsData);
             
-            // Set cricket as default active sport if available
-            const cricket = apiSportsData.find((sport) => sport.slug === 'cricket');
-            if (cricket) {
-              setActiveSport(cricket._id);
-            } else if (apiSportsData.length > 0) {
-              setActiveSport(apiSportsData[0]._id);
+            // Honor the sport from the URL (direct visit / refresh / share),
+            // otherwise default to cricket, then to the first sport.
+            const urlSport = sportSlug
+              ? apiSportsData.find((sport) => sport.slug === sportSlug)
+              : undefined;
+            if (urlSport) {
+              setActiveSport(urlSport._id);
+            } else {
+              const cricket = apiSportsData.find((sport) => sport.slug === 'cricket');
+              if (cricket) {
+                setActiveSport(cricket._id);
+              } else if (apiSportsData.length > 0) {
+                setActiveSport(apiSportsData[0]._id);
+              }
             }
           } else throw new Error('Invalid sports response');
         } catch (apiErr) {
@@ -99,6 +108,15 @@ const Sports = () => {
     
     return () => clearInterval(intervalId);
   }, []);
+
+  // Keep the highlighted sport in sync when navigating between
+  // /sports/cricket, /sports/football, ... (same component, no remount).
+  useEffect(() => {
+    if (sportSlug && sports.length > 0) {
+      const found = sports.find((s) => s.slug === sportSlug);
+      if (found) setActiveSport(found._id);
+    }
+  }, [sportSlug, sports]);
   
   const fetchLiveMatches = async () => {
     try {

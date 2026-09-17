@@ -15,7 +15,7 @@ import {
 import { toast } from "react-hot-toast";
 import dayjs from "dayjs";
 import { 
-  getAdvertisements,
+  getAllAdvertisementsForAdmin,
   createAdvertisement, 
   updateAdvertisement, 
   deleteAdvertisement,
@@ -94,8 +94,9 @@ const AdminAdvertisements: React.FC = () => {
     queryKey: ["admin-advertisements"],
     queryFn: async () => {
       try {
-        // Use any position and page to get all ads (backend should handle admin requests differently)
-        const ads = await getAdvertisements("header", "admin", "hindi", true);
+        // Admin management view: fetch EVERY ad (backend skips
+        // position/page/date filters when page=admin).
+        const ads = await getAllAdvertisementsForAdmin();
         return ads;
       } catch (error: any) {
         console.error('Error fetching advertisements:', error);
@@ -243,6 +244,7 @@ const AdminAdvertisements: React.FC = () => {
               <option value="in-article">In-Article</option>
               <option value="breaking-news">Breaking News</option>
               <option value="category-header">Category Header</option>
+              <option value="category-square">Category Square</option>
             </select>
             <Filter className="absolute right-2 top-2.5 h-4 w-4 text-gray-400" />
           </div>

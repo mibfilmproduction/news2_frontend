@@ -122,11 +122,20 @@ const HomePage = () => {
   const secondaryArticles = articles.slice(1, 5);
   const regularArticles = articles.slice(5);
 
-  // Render a category section with one big article and related smaller ones
-  const renderCategorySection = (categoryId: string, categoryName: string, categorySlug: string) => {
+  // Render a category section with one big article and related smaller ones.
+  // Categories that show ads below them (every 2nd) display only 2 related
+  // articles, and the freed-up space in the right column is filled with a
+  // square ad so the layout stays balanced.
+  const renderCategorySection = (
+    categoryId: string,
+    categoryName: string,
+    categorySlug: string,
+    relatedLimit = 4,
+    squareAdSlot: number | null = null,
+  ) => {
     const categoryArticleList = categoryArticles[categoryId] || [];
     const featuredCategoryArticle = categoryArticleList.length > 0 ? categoryArticleList[0] : null;
-    const relatedArticles = categoryArticleList.slice(1, 5);
+    const relatedArticles = categoryArticleList.slice(1, 1 + relatedLimit);
 
     if (categoryArticleList.length === 0) return null;
 
@@ -169,7 +178,7 @@ const HomePage = () => {
           )}
 
           {/* Related Articles */}
-          <div className="space-y-4">
+          <div className="space-y-3">
             {relatedArticles.length > 0 ? (
               relatedArticles.map(article => (
                 <Card key={article._id} className="overflow-hidden">
@@ -178,11 +187,11 @@ const HomePage = () => {
                       <img
                         src={getImageUrl(article.image)}
                         alt={article.title}
-                        className="h-24 w-full object-cover"
+                        className="h-20 w-full object-cover"
                       />
                     </div>
-                    <CardContent className="p-3 w-2/3">
-                      <h4 className="font-medium text-sm mb-1 line-clamp-2">
+                    <CardContent className="p-2.5 w-2/3">
+                      <h4 className="font-medium text-[13px] leading-snug mb-1 line-clamp-2">
                         <Link to={`/article/${article.slug}`} className="hover:text-primary transition-colors">
                           {article.title}
                         </Link>
@@ -198,6 +207,16 @@ const HomePage = () => {
                   <p>No related articles found.</p>
                 </CardContent>
               </Card>
+            )}
+            {/* Square ad fills the leftover space under the 2 related
+                articles. Slots alternate: even slot = square (300x300),
+                odd slot = banner strip. */}
+            {squareAdSlot !== null && (
+              <AdvertisementDisplay
+                position="category-square"
+                slotIndex={squareAdSlot}
+                variant={squareAdSlot % 2 === 0 ? 'auto' : 'strip'}
+              />
             )}
           </div>
         </div>
@@ -581,18 +600,34 @@ const HomePage = () => {
           </div>
         ) : categories.length > 0 ? (
           <div className="space-y-8">
-            {categories.map((category, index) => (
+            {categories.map((category, index) => {
+              // Ad categories (every 2nd): square-ad slots show 2 related
+              // articles, banner-strip slots show 3, others show 4.
+              const squareSlot = index % 2 === 1 ? Math.floor(index / 2) : null;
+              const relatedLimit = squareSlot === null ? 4 : (squareSlot % 2 === 1 ? 3 : 2);
+              return (
               <div key={category._id} className="category-section">
-                {renderCategorySection(category._id, category.name, category.slug)}
+                {renderCategorySection(
+                  category._id,
+                  category.name,
+                  category.slug,
+                  relatedLimit,
+                  squareSlot,
+                )}
                 {/* Insert advertisement after every category section */}
                 {index % 2 === 1 && (
                   <div className="my-4">
-                    <AdvertisementDisplay position="in-article" onlyShowOne={true} />
+                    <AdvertisementDisplay
+                      position="in-article"
+                      onlyShowOne={true}
+                      slotIndex={Math.floor(index / 2)}
+                    />
                   </div>
                 )}
                 <Separator className="my-8" />
               </div>
-            ))}
+              );
+            })}
           </div>
         ) : (
           <div className="text-center py-8">

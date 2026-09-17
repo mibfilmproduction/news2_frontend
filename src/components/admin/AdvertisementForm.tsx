@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-hot-toast";
@@ -24,6 +24,25 @@ const AdvertisementForm: React.FC<AdvertisementFormProps> = ({
 }) => {
   const isEditMode = !!advertisement;
   const navigate = useNavigate();
+  const startDateRef = useRef<HTMLInputElement>(null);
+  const endDateRef = useRef<HTMLInputElement>(null);
+
+  // Open the native date picker reliably (the overlay icon must never
+  // swallow the click — it is pointer-events-none, and this is a fallback).
+  const openDatePicker = (ref: React.RefObject<HTMLInputElement>) => {
+    const el = ref.current;
+    if (!el) return;
+    try {
+      if (typeof el.showPicker === 'function') {
+        el.showPicker();
+      } else {
+        el.focus();
+        el.click();
+      }
+    } catch {
+      el.focus();
+    }
+  };
   
   // Listen for auth events
   useEffect(() => {
@@ -239,6 +258,7 @@ const AdvertisementForm: React.FC<AdvertisementFormProps> = ({
               <option value="in-article">In-Article</option>
               <option value="breaking-news">Breaking News</option>
               <option value="category-header">Category Header</option>
+              <option value="category-square">Category Square (200x200)</option>
             </select>
           </div>
           
@@ -296,16 +316,17 @@ const AdvertisementForm: React.FC<AdvertisementFormProps> = ({
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Start Date *
             </label>
-            <div className="relative">
+            <div className="relative" onClick={() => openDatePicker(startDateRef)}>
               <input
+                ref={startDateRef}
                 type="date"
                 name="startDate"
                 value={formData.startDate}
                 onChange={handleInputChange}
-                className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
+                className="w-full border border-gray-300 rounded-md px-3 py-2 pr-10 focus:outline-none focus:ring-2 focus:ring-primary cursor-pointer date-input-custom-icon"
                 required
               />
-              <Calendar className="absolute right-3 top-2.5 h-5 w-5 text-gray-400" />
+              <Calendar className="absolute right-3 top-2.5 h-5 w-5 text-gray-400 pointer-events-none" />
             </div>
           </div>
           
@@ -313,16 +334,17 @@ const AdvertisementForm: React.FC<AdvertisementFormProps> = ({
             <label className="block text-sm font-medium text-gray-700 mb-1">
               End Date *
             </label>
-            <div className="relative">
+            <div className="relative" onClick={() => openDatePicker(endDateRef)}>
               <input
+                ref={endDateRef}
                 type="date"
                 name="endDate"
                 value={formData.endDate}
                 onChange={handleInputChange}
-                className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
+                className="w-full border border-gray-300 rounded-md px-3 py-2 pr-10 focus:outline-none focus:ring-2 focus:ring-primary cursor-pointer date-input-custom-icon"
                 required
               />
-              <Calendar className="absolute right-3 top-2.5 h-5 w-5 text-gray-400" />
+              <Calendar className="absolute right-3 top-2.5 h-5 w-5 text-gray-400 pointer-events-none" />
             </div>
           </div>
           
@@ -349,21 +371,22 @@ const AdvertisementForm: React.FC<AdvertisementFormProps> = ({
                 </div>
               </div>
             ) : (
-              <ImageUploader 
-                onUploadComplete={handleImageUpload} 
-                position={formData.position} 
+              <ImageUploader
+                onUploadComplete={handleImageUpload}
+                position={formData.position}
               />
             )}
             
             <div className="mt-1">
               <p className="text-xs text-gray-500">
-                Recommended dimensions:
+                Recommended dimensions (auto-resized on upload):
                 {formData.position === 'header' && ' 970x90px (Leaderboard)'}
-                {formData.position === 'sidebar' && ' 300x250px (Medium Rectangle)'}
-                {formData.position === 'in-article' && ' 728x90px (In-article)'}
-                {formData.position === 'footer' && ' 970x250px (Billboard)'}
-                {formData.position === 'breaking-news' && ' 728x90px (Leaderboard)'}
-                {formData.position === 'category-header' && ' 970x250px (Billboard)'}
+                {formData.position === 'sidebar' && ' 300x600px (Half Page)'}
+                {formData.position === 'in-article' && ' 970x90px (Strip Banner)'}
+                {formData.position === 'footer' && ' 728x90px (Leaderboard)'}
+                {formData.position === 'breaking-news' && ' 300x250px (Medium Rectangle)'}
+                {formData.position === 'category-header' && ' 728x90px (Leaderboard)'}
+                {formData.position === 'category-square' && ' 200x200px (Square)'}
               </p>
             </div>
           </div>

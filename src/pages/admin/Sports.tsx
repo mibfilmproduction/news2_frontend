@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import SEO from '../../components/SEO';
-import { getAllSports } from '../../services/sportsService';
+import { getAllSports, updateSport, deleteSport } from '../../services/sportsService';
 import { 
   Card, 
   CardContent, 
@@ -60,43 +60,45 @@ const AdminSports = () => {
   };
 
   const handleToggleActive = async (id: string, active: boolean) => {
+    const previous = sports;
+    // Optimistic update
+    setSports(prev => prev.map(sport =>
+      sport._id === id ? { ...sport, active } : sport
+    ));
     try {
-      // In a real implementation, this would call an API to update the sport
+      await updateSport(id, { active } as any);
       toast({
         title: "Status Updated",
         description: `Sport status has been ${active ? 'activated' : 'deactivated'}.`,
       });
-      
-      // Update local state
-      setSports(prev => prev.map(sport => 
-        sport._id === id ? { ...sport, active } : sport
-      ));
     } catch (err: any) {
+      // Roll back on failure
+      setSports(previous);
       toast({
         variant: "destructive",
         title: "Error",
-        description: "Failed to update sport status.",
+        description: err.message || "Failed to update sport status.",
       });
     }
   };
 
   const handleDeleteSport = async (id: string) => {
     if (!window.confirm('Are you sure you want to delete this sport?')) return;
-    
+
     try {
-      // In a real implementation, this would call an API to delete the sport
+      await deleteSport(id);
       toast({
         title: "Sport Deleted",
         description: "The sport has been deleted successfully.",
       });
-      
+
       // Update local state
       setSports(prev => prev.filter(sport => sport._id !== id));
     } catch (err: any) {
       toast({
         variant: "destructive",
         title: "Error",
-        description: "Failed to delete sport.",
+        description: err.message || "Failed to delete sport.",
       });
     }
   };

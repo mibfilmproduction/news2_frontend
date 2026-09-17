@@ -40,7 +40,8 @@ export const getFallbackImageUrl = (position?: string, title?: string): string =
     'footer': 'f59e0b',
     'in-article': 'ef4444',
     'breaking-news': '8b5cf6',
-    'category-header': '6366f1'
+    'category-header': '6366f1',
+    'category-square': '0ea5e9'
   };
   const color = position && colorMap[position] ? colorMap[position] : '3b82f6';
   
@@ -53,7 +54,7 @@ export interface Advertisement {
   title: string;
   imageUrl: string;
   targetUrl: string;
-  position: 'header' | 'sidebar' | 'footer' | 'in-article' | 'breaking-news' | 'category-header';
+  position: 'header' | 'sidebar' | 'footer' | 'in-article' | 'breaking-news' | 'category-header' | 'category-square';
   displayOnPages: string[];
   startDate: string;
   endDate: string;
@@ -68,16 +69,30 @@ export interface Advertisement {
 // Cache mechanism to prevent excessive API calls
 const adsCache: { [key: string]: { data: Advertisement[], timestamp: number } } = {};
 
-// Track which ads have been shown to prevent duplicates
-let shownAdsCache: { [key: string]: boolean } = {};
+/**
+ * Clear the ads cache (e.g. after an admin creates/updates/deletes an ad
+ * so the new position shows immediately on the frontend).
+ */
+export const clearAdsCache = () => {
+  Object.keys(adsCache).forEach((key) => delete adsCache[key]);
+};
+
+/** @deprecated Use clearAdsCache instead (kept for backward compat). */
+export const resetAdCache = () => clearAdsCache();
 
 /**
- * Reset the shown ads tracking cache
- * Call this when navigating to a new page to allow ads to be reshown
+ * Fetch EVERY advertisement for the admin management table.
+ * Uses page=admin so the backend skips position/page/date filtering.
  */
-export const resetAdCache = () => {
-  console.log('Resetting advertisement shown cache');
-  shownAdsCache = {};
+export const getAllAdvertisementsForAdmin = async (): Promise<Advertisement[]> => {
+  const response = await advertisementApi.getAdvertisements({ page: 'admin' });
+  const payload: any = response.data;
+  if (!payload) return [];
+  if (Array.isArray(payload)) return payload;
+  if (Array.isArray(payload.data)) return payload.data;
+  if (Array.isArray(payload.results)) return payload.results;
+  if (Array.isArray(payload.advertisements)) return payload.advertisements;
+  return [];
 };
 
 /**
@@ -127,96 +142,34 @@ export const getAdvertisements = async (
     
     try {
       const response = await advertisementApi.getAdvertisements(params);
-      
-      console.log('Advertisement API full response:', response);
-      
+
       if (response.data) {
         let adsData: Advertisement[] = [];
-        
+
         if (response.data.data && Array.isArray(response.data.data)) {
           adsData = response.data.data;
-          console.log('Using standard response structure (data.data)', adsData.length);
         } else if (Array.isArray(response.data)) {
           adsData = response.data;
-          console.log('Using direct array response structure', adsData.length);
         } else if (response.data.results && Array.isArray(response.data.results)) {
           adsData = response.data.results;
-          console.log('Using alternative response structure (data.results)');
         } else {
           console.warn('Unexpected API response structure:', response.data);
           if (response.data.advertisements) {
             adsData = Array.isArray(response.data.advertisements) ? response.data.advertisements : [response.data.advertisements];
-            console.log('Extracted from custom structure (data.advertisements)');
           }
         }
-        
-        console.log('All advertisements in database:', adsData.map(ad => ({
-          id: ad._id,
-          title: ad.title,
-          position: ad.position,
-          pages: ad.displayOnPages,
-          active: ad.isActive
-        })));
-        
-        let filteredAds = [];
-        
-        const exactMatches = adsData.filter(ad => {
-          const adId = ad._id;
-          const isMatch = ad.position === position;
-          const notShownBefore = !shownAdsCache[adId];
-          return isMatch && notShownBefore;
-        });
-        
-        if (exactMatches.length > 0) {
-          console.log(`Found ${exactMatches.length} unused exact position matches for ${position}`);
-          const randomIndex = Math.floor(Math.random() * exactMatches.length);
-          filteredAds = [exactMatches[randomIndex]];
-        } else {
-          const allExactMatches = adsData.filter(ad => ad.position === position);
-          
-          if (allExactMatches.length > 0) {
-            console.log(`Found ${allExactMatches.length} position matches for ${position}, but they've been shown before`);
-            const randomIndex = Math.floor(Math.random() * allExactMatches.length);
-            filteredAds = [allExactMatches[randomIndex]];
-          } else {
-            console.log(`No exact matches for position ${position}, using any available unused ad`);
-            
-            const unusedActiveAds = adsData.filter(ad => ad.isActive === true && !shownAdsCache[ad._id]);
-            
-            if (unusedActiveAds.length > 0) {
-              const randomIndex = Math.floor(Math.random() * unusedActiveAds.length);
-              filteredAds = [unusedActiveAds[randomIndex]];
-              console.log(`Selected random unused active ad: ${filteredAds[0].title} (original position: ${filteredAds[0].position})`);
-            } else {
-              const activeAds = adsData.filter(ad => ad.isActive === true);
-              
-              if (activeAds.length > 0) {
-                const randomIndex = Math.floor(Math.random() * activeAds.length);
-                filteredAds = [activeAds[randomIndex]];
-                console.log(`All ads have been shown, reusing: ${filteredAds[0].title}`);
-              } else if (adsData.length > 0) {
-                const randomIndex = Math.floor(Math.random() * adsData.length);
-                filteredAds = [adsData[randomIndex]];
-                console.log(`No active ads available, using inactive ad as fallback: ${filteredAds[0].title}`);
-              }
-            }
-          }
-        }
-        
-        if (filteredAds.length > 0) {
-          filteredAds.forEach(ad => {
-            shownAdsCache[ad._id] = true;
-            console.log(`Marked ad ${ad.title} (${ad._id}) as shown`);
-          });
-        }
-        
-        console.log(`Found ${adsData.length} total advertisements, ${filteredAds.length} matching position=${position}`);
-        
+
+        // The backend already filters by position + page + language +
+        // active + date range, so return its result as-is. Showing a
+        // wrong-position ad as "fallback" only confuses admins ("I added a
+        // footer ad but a header ad shows in the footer slot").
+        const filteredAds = adsData.filter((ad) => ad.position === position);
+
         adsCache[cacheKey] = {
           data: filteredAds,
           timestamp: now
         };
-        
+
         return filteredAds;
       }
       return [];
@@ -251,10 +204,9 @@ export const trackAdImpression = async (adId: string): Promise<void> => {
       return;
     }
     
-    await api.post(`/advertisements/${adId}/impression`);
+    await advertisementApi.trackImpression(adId);
   } catch (error) {
     console.error(`Error tracking ad impression for ${adId}:`, error);
-    console.log(`[Fallback] Tracked impression for ad ${adId} locally only`);
   }
 };
 
@@ -269,10 +221,9 @@ export const trackAdClick = async (adId: string): Promise<void> => {
       return;
     }
     
-    await api.post(`/advertisements/${adId}/click`);
+    await advertisementApi.trackClick(adId);
   } catch (error) {
     console.error(`Error tracking ad click for ${adId}:`, error);
-    console.log(`[Fallback] Tracked click for ad ${adId} locally only`);
   }
 };
 
@@ -284,7 +235,7 @@ export const trackAdClick = async (adId: string): Promise<void> => {
 export const createAdvertisement = async (adData: Omit<Advertisement, '_id' | 'createdAt' | 'updatedAt' | 'impressions' | 'clicks'>): Promise<Advertisement> => {
   try {
     const response = await advertisementApi.createAdvertisement(adData);
-    
+    clearAdsCache();
     if (response.data && response.data.data) {
       return response.data.data;
     } else if (response.data) {
@@ -304,7 +255,7 @@ export const createAdvertisement = async (adData: Omit<Advertisement, '_id' | 'c
 export const updateAdvertisement = async (adId: string, adData: Partial<Advertisement>): Promise<Advertisement> => {
   try {
     const response = await advertisementApi.updateAdvertisement(adId, adData);
-    
+    clearAdsCache();
     if (response.data && response.data.data) {
       return response.data.data;
     } else if (response.data) {
@@ -324,6 +275,7 @@ export const updateAdvertisement = async (adId: string, adData: Partial<Advertis
 export const deleteAdvertisement = async (adId: string): Promise<void> => {
   try {
     await advertisementApi.deleteAdvertisement(adId);
+    clearAdsCache();
   } catch (error) {
     console.error(`Error deleting advertisement ${adId}:`, error);
     throw error;

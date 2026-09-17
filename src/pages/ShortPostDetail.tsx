@@ -795,26 +795,6 @@ const ShortPostDetail = () => {
                 </Button>
             </div>
 
-            {/* Advertisement Banner */}
-            <div className="mb-6 p-4 bg-gray-100 rounded-md border border-gray-200 text-center overflow-hidden">
-              <div className="text-sm text-gray-500 mb-1">ADVERTISEMENT</div>
-              <div className="bg-white p-3 rounded shadow-sm">
-                {/* Local placeholder instead of external service */}
-                <div 
-                  className="w-full h-[120px] rounded bg-gradient-to-r from-gray-100 to-gray-200 flex items-center justify-center"
-                  style={{ border: '1px solid #e5e7eb' }}
-                >
-                  <div className="text-center">
-                    <div className="text-lg font-bold text-gray-600">Your Ad Here</div>
-                    <div className="text-xs text-gray-500 mt-1">600 x 120</div>
-                  </div>
-                </div>
-                <div className="text-sm font-medium mt-2">Sponsored Content</div>
-                <p className="text-xs text-gray-600 mt-1">Promote your business here and reach our readers</p>
-                <button className="mt-2 px-3 py-1 bg-blue-500 text-white text-xs rounded hover:bg-blue-600 transition">Learn More</button>
-              </div>
-            </div>
-            
             {/* Related Posts Section */}
             <div className="mb-8">
               <h3 className="font-medium text-xl border-b pb-2 mb-4">Related Posts</h3>

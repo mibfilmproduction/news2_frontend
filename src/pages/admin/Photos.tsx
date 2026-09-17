@@ -40,6 +40,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { Textarea } from "@/components/ui/textarea";
+import MediaImageField from "@/components/admin/MediaImageField";
 
 // Define form schema for photo validation
 const formSchema = z.object({
@@ -50,8 +51,8 @@ const formSchema = z.object({
   alt: z.string().min(2, {
     message: "Alt text is required for accessibility.",
   }),
-  imageUrl: z.string().url({
-    message: "Please enter a valid image URL.",
+  imageUrl: z.string().min(1, {
+    message: "Please upload an image file.",
   }),
   categoryId: z.string(),
 });
@@ -412,16 +413,21 @@ const Photos = () => {
                   control={form.control}
                   name="imageUrl"
                   render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Image URL</FormLabel>
+                    <FormItem className="col-span-full">
+                      <FormLabel>Image File *</FormLabel>
                       <FormControl>
-                        <Input placeholder="https://example.com/image.jpg" {...field} />
+                        <MediaImageField
+                          value={field.value}
+                          onChange={(url) => field.onChange(url)}
+                          folder="mibnews/photos"
+                          label="Photo"
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
-                
+
                 <FormField
                   control={form.control}
                   name="alt"
@@ -460,23 +466,6 @@ const Photos = () => {
                   </FormItem>
                 )}
               />
-              
-              {form.watch("imageUrl") && (
-                <div className="mt-2">
-                  <label className="block text-sm font-medium mb-1">Preview</label>
-                  <div className="h-48 w-full rounded-md overflow-hidden bg-gray-100">
-                    <img
-                      src={form.watch("imageUrl")}
-                      alt="Preview"
-                      className="h-full w-full object-contain"
-                      onError={(e) => {
-                        const target = e.target as HTMLImageElement;
-                        target.src = "https://placehold.co/600x400?text=Invalid+Image+URL";
-                      }}
-                    />
-                  </div>
-                </div>
-              )}
               
               <DialogFooter>
                 <Button type="submit">

@@ -54,6 +54,7 @@ const ShortPosts = lazy(() => import("./pages/admin/ShortPosts"));
 const Reels = lazy(() => import("./pages/admin/Reels"));
 const AdminLiveTv = lazy(() => import("./pages/admin/LiveTv"));
 const AdminSports = lazy(() => import("./pages/admin/Sports"));
+const SportForm = lazy(() => import("./pages/admin/SportForm"));
 const AdminCareers = lazy(() => import("./pages/admin/Careers"));
 const PrivacyPolicy = lazy(() => import("./pages/PrivacyPolicy"));
 const Career = lazy(() => import("./pages/Career"));
@@ -90,7 +91,6 @@ const AppRoutes = () => {
           <Route path="videos" element={<Videos />} />
           <Route path="live-tv" element={<LiveTv />} />
           {/* Sports routes removed */}
-          <Route path="category/cricket" element={<Navigate to="/sports/cricket" replace />} />
           <Route path="category/:slug" element={<CategoryPage />} />
           <Route path="article/:slug" element={<ArticleDetail />} />
           <Route path="world" element={<World />} />
@@ -134,6 +134,8 @@ const AppRoutes = () => {
           <Route path="videos" element={<AdminOnlyPage><AdminVideos /></AdminOnlyPage>} />
           <Route path="live-tv" element={<AdminOnlyPage><AdminLiveTv /></AdminOnlyPage>} />
           <Route path="sports" element={<AdminOnlyPage><AdminSports /></AdminOnlyPage>} />
+          <Route path="sports/create" element={<AdminOnlyPage><SportForm /></AdminOnlyPage>} />
+          <Route path="sports/:id" element={<AdminOnlyPage><SportForm /></AdminOnlyPage>} />
           <Route path="short-posts" element={<ShortPosts />} />
           <Route path="reels" element={<Reels />} />
           <Route path="comments" element={<Comments />} />

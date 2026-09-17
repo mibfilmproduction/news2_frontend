@@ -1,4 +1,4 @@
-import { api } from '@/lib/api-client';
+import { advertisementApi } from '@/lib/api-client';
 
 /**
  * Upload an image file to Cloudinary through our backend API
@@ -12,27 +12,26 @@ export const uploadImage = async (file: File, position?: string): Promise<{ imag
     formData.append('image', file);
     
     console.log('Uploading image to Cloudinary:', file.name, position ? `for position: ${position}` : '');
-    
-    let uploadUrl = `${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/advertisements/upload-image`;
-    if (position) {
-      uploadUrl += `?position=${encodeURIComponent(position)}`;
-    }
-    
-    const response = await api.upload(uploadUrl, formData);
-    
-    console.log('Cloudinary upload response:', response);
-    
-    if (response.success && response.data) {
+
+    // Use the shared api-client helper with a RELATIVE endpoint.
+    // Passing an absolute URL here (VITE_API_URL + path) would get prefixed
+    // with API_BASE_URL again inside api.upload(), producing /api/api/...
+    // which returns 404.
+    const response = await advertisementApi.uploadImage(formData, position);
+
+    if (response.success && response.data?.imageUrl) {
       return {
         imageUrl: response.data.imageUrl,
-        publicId: response.data.publicId
+        publicId: response.data.publicId ?? '',
       };
     }
-    
-    throw new Error('Upload failed: Invalid response from server');
+
+    // Surface the REAL server message (401/403/500 details) instead of a
+    // generic error, so the actual cause is visible in the toast + console.
+    throw new Error(response.message || 'Upload failed: Invalid response from server');
   } catch (error) {
-    console.error('Error uploading image:', error);
-    throw error;
+    if (error instanceof Error) throw error;
+    throw new Error(typeof error === 'string' ? error : 'Image upload failed. Please try again.');
   }
 };
 
