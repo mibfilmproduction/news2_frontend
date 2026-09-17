@@ -90,6 +90,127 @@ export const getAllSports = async (params?: { active?: boolean }): Promise<Sport
   }
 };
 
+export interface FreeDigestMatch {
+  id: string;
+  sport: string;
+  league: { name: string; logo?: string };
+  homeTeam: { name: string; shortName?: string; logo?: string };
+  awayTeam: { name: string; shortName?: string; logo?: string };
+  startTime: string;
+  status: 'scheduled' | 'live' | 'completed';
+  statusText?: string;
+  scoreHome: number | string | null;
+  scoreAway: number | string | null;
+  venue?: string;
+  source?: string;
+  detailSport?: string;
+  detailSlug?: string;
+}
+
+export interface FreeSportsDigest {
+  generatedAt: string;
+  counts: { live: number; upcoming: number; results: number };
+  featured: FreeDigestMatch[];
+  live: FreeDigestMatch[];
+  upcoming: FreeDigestMatch[];
+  results: FreeDigestMatch[];
+}
+
+const EMPTY_DIGEST: FreeSportsDigest = {
+  generatedAt: '',
+  counts: { live: 0, upcoming: 0, results: 0 },
+  featured: [],
+  live: [],
+  upcoming: [],
+  results: [],
+};
+
+export interface StandingRow {
+  position: number;
+  team: string;
+  shortName?: string;
+  logo?: string;
+  played: number;
+  won: number;
+  drawn: number;
+  lost: number;
+  goalsFor: number;
+  goalsAgainst: number;
+  goalDiff: number;
+  points: number;
+}
+
+/** Free league standings (Bundesliga). Never throws — [] on failure. */
+export const getStandings = async (competition = 'bl1'): Promise<{ league: string; rows: StandingRow[] }> => {
+  try {
+    const response = await sportsApi.getStandings(competition);
+    if (!response.success || !response.data) return { league: '', rows: [] };
+    return {
+      league: response.data.league || '',
+      rows: Array.isArray(response.data.rows) ? response.data.rows : [],
+    };
+  } catch (error) {
+    console.error('Error fetching standings:', error);
+    return { league: '', rows: [] };
+  }
+};
+
+/** Teams from our own database (admin-managed). Never throws. */
+export const getPopularTeams = async (limit = 6): Promise<Team[]> => {
+  try {
+    const response = await sportsApi.getTeams({ limit });
+    if (!response.success || !response.data) return [];
+    const list = Array.isArray(response.data) ? response.data : response.data.data || response.data.teams || [];
+    return Array.isArray(list) ? list.slice(0, limit) : [];
+  } catch (error) {
+    console.error('Error fetching teams:', error);
+    return [];
+  }
+};
+
+export interface FreeMatchDetail extends FreeDigestMatch {
+  liveMinute: number | null;
+  incidents: any[];
+  stats: Array<{ label: string; home: number | string; away: number | string; home_pct?: number; away_pct?: number; suffix?: string }>;
+  lineups: any;
+  updated?: string | null;
+}
+
+/**
+ * Full detail for one free match (score, stats, timeline, lineups).
+ * Throws when the provider has no detail for the slug.
+ */
+export const getFreeMatchDetail = async (sport: string, slug: string): Promise<FreeMatchDetail> => {
+  const response = await sportsApi.getSportScoreDetail(sport, slug);
+  if (!response.success || !response.data) {
+    throw new Error(response.message || 'Match detail not available');
+  }
+  return response.data;
+};
+
+/**
+ * Free aggregated matches (OpenLigaDB + TheSportsDB via backend, no keys).
+ * Never throws — returns an empty digest when providers are unreachable.
+ */
+export const getFreeSportsDigest = async (): Promise<FreeSportsDigest> => {
+  try {
+    const response = await sportsApi.getFreeDigest();
+    if (!response.success || !response.data) return EMPTY_DIGEST;
+    const d = response.data;
+    return {
+      generatedAt: d.generatedAt || '',
+      counts: d.counts || EMPTY_DIGEST.counts,
+      featured: Array.isArray(d.featured) ? d.featured : [],
+      live: Array.isArray(d.live) ? d.live : [],
+      upcoming: Array.isArray(d.upcoming) ? d.upcoming : [],
+      results: Array.isArray(d.results) ? d.results : [],
+    };
+  } catch (error) {
+    console.error('Error fetching free sports digest:', error);
+    return EMPTY_DIGEST;
+  }
+};
+
 export const getSportBySlug = async (slug: string): Promise<Sport | null> => {
   try {
     // First try to get from cache

@@ -20,8 +20,13 @@ import {
   TableHeader,
   TableRow,
 } from "../../components/ui/table";
-import { PlusCircle, Edit, Trash2, Loader2 } from "lucide-react";
+import { PlusCircle, Edit, Trash2, Loader2, Trophy } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+
+// Sport icon column: image only for real URLs, Trophy glyph otherwise
+// (DB stores plain names like "trophy" for older sports).
+const isImageUrl = (value?: string) =>
+  !!value && (/^(https?:\/\/|data:|blob:|\/\/)/.test(value) || value.startsWith('/'));
 
 const AdminSports = () => {
   const [sports, setSports] = useState<any[]>([]);
@@ -147,8 +152,10 @@ const AdminSports = () => {
                 {sports.map((sport) => (
                   <TableRow key={sport._id}>
                     <TableCell className="font-medium flex items-center gap-2">
-                      {sport.icon && (
-                        <img src={sport.icon} alt={sport.name} className="w-6 h-6" />
+                      {isImageUrl(sport.icon) ? (
+                        <img src={sport.icon} alt={sport.name} className="w-6 h-6 object-contain" />
+                      ) : (
+                        <Trophy size={20} className="text-primary shrink-0" />
                       )}
                       {sport.name}
                     </TableCell>

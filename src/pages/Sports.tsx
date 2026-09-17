@@ -1,11 +1,20 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import SEO from '../components/SEO';
-import { 
-  getAllSports, 
-  getFeaturedMatches, 
-  getCurrentMatches
+import {
+  getAllSports,
+  getFeaturedMatches,
+  getCurrentMatches,
+  getFreeSportsDigest,
+  getStandings,
+  getPopularTeams,
+  FreeSportsDigest,
+  FreeDigestMatch,
+  StandingRow,
+  Team,
 } from '../services/sportsService';
+import { newsApi, categoryApi } from '@/lib/api-client';
+import { getImageUrl } from '@/lib/utils';
 import { Spinner } from '../components/Spinner';
 import ErrorDisplay from '../components/shared/ErrorDisplay';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs";
@@ -19,12 +28,30 @@ import {
 } from "../components/ui/card";
 import { Badge } from '../components/ui/badge';
 import { Button } from '../components/ui/button';
+import { Trophy } from 'lucide-react';
 import { formatDistanceToNow, format } from 'date-fns';
+
+// Sport icon is either a hosted image URL or a plain name like "trophy".
+// Render an image only for real URLs, otherwise a Trophy glyph.
+const isImageUrl = (value?: string) =>
+  !!value && (/^(https?:\/\/|data:|blob:|\/\/)/.test(value) || value.startsWith('/'));
 
 const Sports = () => {
   const [sports, setSports] = useState<any[]>([]);
   const [featuredMatches, setFeaturedMatches] = useState<any[]>([]);
   const [liveMatches, setLiveMatches] = useState<any[]>([]);
+  const [freeDigest, setFreeDigest] = useState<FreeSportsDigest>({
+    generatedAt: '',
+    counts: { live: 0, upcoming: 0, results: 0 },
+    featured: [],
+    live: [],
+    upcoming: [],
+    results: [],
+  });
+  const [sportsNews, setSportsNews] = useState<any[]>([]);
+  const [sportsNewsSlug, setSportsNewsSlug] = useState<string>('');
+  const [standings, setStandings] = useState<{ league: string; rows: StandingRow[] }>({ league: '', rows: [] });
+  const [popularTeams, setPopularTeams] = useState<Team[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState("featured");
@@ -45,22 +72,12 @@ const Sports = () => {
           // Verify we received an array
           if (Array.isArray(apiSportsData)) {
             setSports(apiSportsData);
-            
-            // Honor the sport from the URL (direct visit / refresh / share),
-            // otherwise default to cricket, then to the first sport.
+            // Default = All sports (null) so every tab fills with data.
+            // A sport in the URL (/sports/football) still pre-selects it.
             const urlSport = sportSlug
               ? apiSportsData.find((sport) => sport.slug === sportSlug)
               : undefined;
-            if (urlSport) {
-              setActiveSport(urlSport._id);
-            } else {
-              const cricket = apiSportsData.find((sport) => sport.slug === 'cricket');
-              if (cricket) {
-                setActiveSport(cricket._id);
-              } else if (apiSportsData.length > 0) {
-                setActiveSport(apiSportsData[0]._id);
-              }
-            }
+            setActiveSport(urlSport ? urlSport._id : null);
           } else throw new Error('Invalid sports response');
         } catch (apiErr) {
           console.error(apiErr);
@@ -78,6 +95,45 @@ const Sports = () => {
           throw new Error('Unable to load featured matches');
         }
         
+        // Fetch free aggregated matches (no API key needed, never throws)
+        try {
+          const digest = await getFreeSportsDigest();
+          setFreeDigest(digest);
+        } catch (apiErr) {
+          console.error('Free sports digest failed', apiErr);
+        }
+
+        // Real sports news from our own articles (sports category)
+        try {
+          const catsRes: any = await categoryApi.getCategories({ limit: 50 });
+          const cats = Array.isArray(catsRes.data) ? catsRes.data : catsRes.data?.data || [];
+          const sportsCat = cats.find((c: any) => ['sports', 'sports-entertainment', 'cricket'].includes(c.slug))
+            || cats.find((c: any) => /sport/i.test(c.name || ''));
+          if (sportsCat) {
+            setSportsNewsSlug(sportsCat.slug);
+            const newsRes: any = await newsApi.getArticles({ category: sportsCat._id, limit: 3 });
+            const arr = Array.isArray(newsRes.data) ? newsRes.data : newsRes.data?.data || [];
+            setSportsNews(arr.slice(0, 3));
+          }
+        } catch (apiErr) {
+          console.error('Sports news failed', apiErr);
+          setSportsNews([]);
+        }
+
+        // Real league standings (free, no key)
+        try {
+          setStandings(await getStandings('bl1'));
+        } catch (apiErr) {
+          console.error('Standings failed', apiErr);
+        }
+
+        // Real teams from our database (admin-managed)
+        try {
+          setPopularTeams(await getPopularTeams(6));
+        } catch (apiErr) {
+          console.error('Teams failed', apiErr);
+        }
+
         // Fetch live cricket matches
         try {
           const liveData = await getCurrentMatches();
@@ -175,6 +231,92 @@ const Sports = () => {
     }
     return null;
   };
+
+  // Currently selected sport slug (from the sport buttons / URL)
+  const selectedSportSlug = sports.find((s) => s._id === activeSport)?.slug || null;
+
+  // Free API items use 'soccer' while our DB sport is 'football' — map them.
+  const freeItemMatchesSport = (item: FreeDigestMatch) => {
+    if (!selectedSportSlug) return true;
+    if (item.sport === selectedSportSlug) return true;
+    if (selectedSportSlug === 'football' && item.sport === 'soccer') return true;
+    if (selectedSportSlug === 'soccer' && item.sport === 'football') return true;
+    return false;
+  };
+
+  const freeFeatured = freeDigest.featured.filter(freeItemMatchesSport);
+  const freeLive = freeDigest.live.filter(freeItemMatchesSport);
+  const freeUpcoming = freeDigest.upcoming.filter(freeItemMatchesSport);
+  const freeResults = freeDigest.results.filter(freeItemMatchesSport);
+
+  const FreeMatchCard = ({ match }: { match: FreeDigestMatch }) => {
+    const fmtScore = (v: number | string | null | undefined) =>
+      v === null || v === undefined || v === '' ? null : String(v);
+    const homeScore = fmtScore(match.scoreHome);
+    const awayScore = fmtScore(match.scoreAway);
+    const hasScore = homeScore !== null || awayScore !== null;
+    const canOpen = Boolean(match.detailSport && match.detailSlug);
+    return (
+      <Card
+        className={`overflow-hidden border hover:shadow-lg transition-shadow ${canOpen ? 'cursor-pointer' : ''}`}
+        onClick={canOpen ? () => navigate(`/sports/live/${match.detailSport}/${match.detailSlug}`) : undefined}
+      >
+        <CardHeader className="pb-2">
+          <div className="flex justify-between items-center">
+            <div className="flex items-center gap-2">
+              {match.league.logo ? (
+                <img src={match.league.logo} alt={match.league.name} className="w-6 h-6 object-contain" />
+              ) : null}
+              <span className="text-sm font-medium">{match.league.name}</span>
+            </div>
+            {getStatusBadge(match.status)}
+          </div>
+          <CardTitle className="text-base">{match.homeTeam.name} vs {match.awayTeam.name}</CardTitle>
+          {match.venue ? <CardDescription>{match.venue}</CardDescription> : null}
+        </CardHeader>
+        <CardContent className="pb-2">
+          <div className="flex justify-between items-center">
+            <div className="flex items-center gap-3">
+              {match.homeTeam.logo ? (
+                <img src={match.homeTeam.logo} alt={match.homeTeam.name} className="w-10 h-10 object-contain" />
+              ) : (
+                <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center font-bold">
+                  {match.homeTeam.shortName || match.homeTeam.name.charAt(0)}
+                </div>
+              )}
+              <div>
+                <div className="font-semibold">{match.homeTeam.shortName || match.homeTeam.name}</div>
+                {homeScore !== null && <div className="text-lg font-bold">{homeScore}</div>}
+              </div>
+            </div>
+            <div className="mx-2 text-xl">vs</div>
+            <div className="flex items-center gap-3">
+              <div className="text-right">
+                <div className="font-semibold">{match.awayTeam.shortName || match.awayTeam.name}</div>
+                {awayScore !== null && <div className="text-lg font-bold">{awayScore}</div>}
+              </div>
+              {match.awayTeam.logo ? (
+                <img src={match.awayTeam.logo} alt={match.awayTeam.name} className="w-10 h-10 object-contain" />
+              ) : (
+                <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center font-bold">
+                  {match.awayTeam.shortName || match.awayTeam.name.charAt(0)}
+                </div>
+              )}
+            </div>
+          </div>
+        </CardContent>
+        <CardFooter className="text-sm text-muted-foreground pt-0">
+          {match.status === 'live' ? (
+            <span className="text-red-500 font-medium">LIVE NOW{match.statusText ? ` • ${match.statusText}` : ''}</span>
+          ) : match.status === 'completed' ? (
+            <span>{hasScore ? `Full time: ${homeScore ?? '-'} - ${awayScore ?? '-'}` : 'Completed'}</span>
+          ) : (
+            <span>{formatMatchTime(match.startTime)}</span>
+          )}
+        </CardFooter>
+      </Card>
+    );
+  };
   
   if (isLoading) {
     return <Spinner size="lg" />;
@@ -197,6 +339,16 @@ const Sports = () => {
       
       {/* Sports Navigation */}
       <div className="flex flex-wrap gap-2 mb-6 overflow-x-auto pb-2">
+        <Button
+          variant={activeSport === null ? "default" : "outline"}
+          onClick={() => {
+            setActiveSport(null);
+            navigate('/sports');
+          }}
+          className="flex items-center gap-2"
+        >
+          All Sports
+        </Button>
         {sports.map((sport) => (
           <Button
             key={sport._id}
@@ -207,8 +359,10 @@ const Sports = () => {
             }}
             className="flex items-center gap-2"
           >
-            {sport.icon && (
-              <img src={sport.icon} alt={sport.name} className="w-5 h-5" />
+            {isImageUrl(sport.icon) ? (
+              <img src={sport.icon} alt={sport.name} className="w-5 h-5 object-contain" />
+            ) : (
+              <Trophy size={18} className="text-primary" />
             )}
             {sport.name}
           </Button>
@@ -227,8 +381,7 @@ const Sports = () => {
         {/* Featured Matches Tab */}
         <TabsContent value="featured">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {featuredMatches.length > 0 ? (
-              featuredMatches.map(match => (
+            {featuredMatches.map(match => (
                 <Card key={match._id} className="overflow-hidden border hover:shadow-lg transition-shadow cursor-pointer"
                   onClick={() => navigate(`/sports/${match.sport.slug}/match/${match._id}`)}>
                   <CardHeader className="pb-2">
@@ -295,7 +448,11 @@ const Sports = () => {
                   </CardFooter>
                 </Card>
               ))
-            ) : (
+            }
+            {freeFeatured.slice(0, 6).map(match => (
+              <FreeMatchCard key={match.id} match={match} />
+            ))}
+            {featuredMatches.length === 0 && freeFeatured.length === 0 && (
               <div className="col-span-full text-center py-8">
                 <p className="text-muted-foreground">No featured matches available</p>
               </div>
@@ -355,9 +512,18 @@ const Sports = () => {
                   </CardFooter>
                 </Card>
               ))
-            ) : (
+            ) : null}
+            {freeLive.map(match => (
+              <FreeMatchCard key={match.id} match={match} />
+            ))}
+            {liveMatches.length === 0 && freeLive.length === 0 && (
               <div className="col-span-full text-center py-8">
                 <p className="text-muted-foreground">No live matches currently in progress</p>
+                {freeUpcoming.length > 0 && (
+                  <p className="text-sm text-muted-foreground mt-2">
+                    Next up: {freeUpcoming[0].homeTeam.name} vs {freeUpcoming[0].awayTeam.name} — {formatMatchTime(freeUpcoming[0].startTime)}
+                  </p>
+                )}
               </div>
             )}
           </div>
@@ -365,100 +531,119 @@ const Sports = () => {
         
         {/* Upcoming Matches Tab */}
         <TabsContent value="upcoming">
-          <div className="flex justify-center items-center py-10">
-            <Button 
-              onClick={() => navigate(`/sports/cricket`)}
-              className="px-6 py-2 bg-primary text-white"
-            >
-              View Upcoming Matches
-            </Button>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {freeUpcoming.map(match => (
+              <FreeMatchCard key={match.id} match={match} />
+            ))}
+            {freeUpcoming.length === 0 && (
+              <div className="col-span-full text-center py-8">
+                <p className="text-muted-foreground">No upcoming matches found</p>
+              </div>
+            )}
           </div>
         </TabsContent>
         
         {/* Results Tab */}
         <TabsContent value="results">
-          <div className="flex justify-center items-center py-10">
-            <Button 
-              onClick={() => navigate(`/sports/cricket`)}
-              className="px-6 py-2 bg-primary text-white"
-            >
-              View Recent Results
-            </Button>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {freeResults.map(match => (
+              <FreeMatchCard key={match.id} match={match} />
+            ))}
+            {freeResults.length === 0 && (
+              <div className="col-span-full text-center py-8">
+                <p className="text-muted-foreground">No recent results found</p>
+              </div>
+            )}
           </div>
         </TabsContent>
       </Tabs>
+
+      <p className="text-center text-xs text-muted-foreground mt-2">
+        Live scores & fixtures by{' '}
+        <a href="https://sportscore.com/" target="_blank" rel="noopener sponsored" className="underline hover:text-primary">
+          SportScore
+        </a>
+      </p>
       
-      {/* Cricket News Section */}
+      {/* Sports News Section (real articles, hidden when empty) */}
+      {sportsNews.length > 0 && (
       <section className="mt-8">
         <div className="flex justify-between items-center mb-4">
-          <h2 className="text-2xl font-bold">Cricket News</h2>
-          <Button variant="outline" onClick={() => navigate('/category/cricket')}>
+          <h2 className="text-2xl font-bold">Sports News</h2>
+          <Button variant="outline" onClick={() => navigate(`/category/${sportsNewsSlug || 'sports'}`)}>
             View All
           </Button>
         </div>
-        
+
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {[1, 2, 3].map((item) => (
-            <Card key={item} className="overflow-hidden hover:shadow-md transition-shadow cursor-pointer"
-              onClick={() => navigate(`/category/cricket`)}>
+          {sportsNews.map((item) => (
+            <Card key={item._id} className="overflow-hidden hover:shadow-md transition-shadow cursor-pointer"
+              onClick={() => navigate(`/article/${item.slug}`)}>
               <div className="aspect-video bg-muted">
-                <img 
-                  src={`https://placehold.co/600x340/png?text=Cricket+News+${item}`} 
-                  alt="Cricket News" 
+                <img
+                  src={getImageUrl(item.image)}
+                  alt={item.title}
                   className="w-full h-full object-cover"
+                  loading="lazy"
                 />
               </div>
               <CardContent className="pt-4">
-                <h3 className="font-bold text-lg mb-2">IPL 2025: Teams announce retained players ahead of mega auction</h3>
-                <p className="text-muted-foreground text-sm mb-2">
-                  Several star players have been released as teams prepare for the upcoming mega auction.
+                <h3 className="font-bold text-lg mb-2 line-clamp-2">{item.title}</h3>
+                <p className="text-muted-foreground text-sm mb-2 line-clamp-2">
+                  {item.summary || ''}
                 </p>
                 <div className="text-xs text-muted-foreground">
-                  {formatDistanceToNow(new Date(Date.now() - 1000 * 60 * 60 * item), { addSuffix: true })}
+                  {formatDistanceToNow(new Date(item.createdAt), { addSuffix: true })}
                 </div>
               </CardContent>
             </Card>
           ))}
         </div>
       </section>
+      )}
       
-      {/* Points Table Section */}
+      {/* Points Table Section (real standings, hidden when empty) */}
+      {standings.rows.length > 0 && (
       <section className="mt-10">
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-2xl font-bold">Points Table</h2>
-          <Button variant="outline" onClick={() => navigate('/sports/cricket')}>
-            View All
-          </Button>
         </div>
-        
+
         <Card>
           <CardHeader>
-            <CardTitle>ICC Men's Cricket World Cup 2025</CardTitle>
+            <CardTitle>{standings.league || 'League Standings'}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead className="bg-muted">
                   <tr>
+                    <th className="text-left p-2">#</th>
                     <th className="text-left p-2">Team</th>
                     <th className="p-2">P</th>
                     <th className="p-2">W</th>
+                    <th className="p-2">D</th>
                     <th className="p-2">L</th>
-                    <th className="p-2">NR</th>
+                    <th className="p-2">GD</th>
                     <th className="p-2">Pts</th>
-                    <th className="p-2">NRR</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {['India', 'Australia', 'England', 'New Zealand', 'South Africa'].map((team, index) => (
-                    <tr key={team} className={index % 2 === 0 ? 'bg-background' : 'bg-muted/30'}>
-                      <td className="p-2 font-medium">{team}</td>
-                      <td className="p-2 text-center">{10 - index}</td>
-                      <td className="p-2 text-center">{8 - index}</td>
-                      <td className="p-2 text-center">{index}</td>
-                      <td className="p-2 text-center">0</td>
-                      <td className="p-2 text-center font-bold">{16 - (index * 2)}</td>
-                      <td className="p-2 text-center">{(1.5 - (index * 0.3)).toFixed(2)}</td>
+                  {standings.rows.slice(0, 10).map((team) => (
+                    <tr key={`${team.position}-${team.team}`} className={team.position % 2 === 1 ? 'bg-background' : 'bg-muted/30'}>
+                      <td className="p-2 text-muted-foreground">{team.position}</td>
+                      <td className="p-2 font-medium">
+                        <span className="flex items-center gap-2">
+                          {team.logo && <img src={team.logo} alt={team.team} className="w-5 h-5 object-contain" />}
+                          {team.team}
+                        </span>
+                      </td>
+                      <td className="p-2 text-center">{team.played}</td>
+                      <td className="p-2 text-center">{team.won}</td>
+                      <td className="p-2 text-center">{team.drawn}</td>
+                      <td className="p-2 text-center">{team.lost}</td>
+                      <td className="p-2 text-center">{team.goalDiff > 0 ? `+${team.goalDiff}` : team.goalDiff}</td>
+                      <td className="p-2 text-center font-bold">{team.points}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -467,34 +652,43 @@ const Sports = () => {
           </CardContent>
         </Card>
       </section>
+      )}
       
-      {/* Teams Section */}
+      {/* Teams Section (real DB teams, hidden when empty) */}
+      {popularTeams.length > 0 && (
       <section className="mt-10 mb-10">
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-2xl font-bold">Popular Teams</h2>
-          <Button variant="outline" onClick={() => navigate('/sports/cricket')}>
-            View All
-          </Button>
         </div>
-        
+
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
-          {['India', 'Australia', 'England', 'Pakistan', 'South Africa', 'New Zealand'].map((team) => (
-            <Card key={team} className="overflow-hidden hover:shadow-md transition-shadow cursor-pointer"
-              onClick={() => navigate(`/sports/cricket`)}>
+          {popularTeams.map((team) => (
+            <Card key={team._id} className="overflow-hidden">
               <div className="p-4 flex flex-col items-center">
-                <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mb-3">
-                  <img 
-                    src={`https://placehold.co/200/png?text=${team.charAt(0)}`} 
-                    alt={team} 
-                    className="w-full h-full object-cover rounded-full"
-                  />
+                <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mb-3 overflow-hidden">
+                  {team.logo ? (
+                    <img
+                      src={team.logo}
+                      alt={team.name}
+                      className="w-full h-full object-cover rounded-full"
+                      loading="lazy"
+                    />
+                  ) : (
+                    <span className="font-bold text-xl">
+                      {(team.shortName || team.name || 'T').charAt(0)}
+                    </span>
+                  )}
                 </div>
-                <h3 className="font-semibold text-center">{team}</h3>
+                <h3 className="font-semibold text-center text-sm">{team.name}</h3>
+                {team.country && (
+                  <p className="text-xs text-muted-foreground">{team.country}</p>
+                )}
               </div>
             </Card>
           ))}
         </div>
       </section>
+      )}
     </div>
   );
 };

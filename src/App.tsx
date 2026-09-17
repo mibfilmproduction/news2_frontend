@@ -21,6 +21,7 @@ const Videos = lazy(() => import("./pages/Videos"));
 const LiveTv = lazy(() => import("./pages/LiveTv"));
 const Sports = lazy(() => import("./pages/Sports"));
 const MatchDetail = lazy(() => import("./pages/MatchDetail"));
+const LiveMatchDetail = lazy(() => import("./pages/LiveMatchDetail"));
 const CategoryPage = lazy(() => import("./pages/CategoryPage"));
 const ShortPostsPage = lazy(() => import("./pages/ShortPostsPage"));
 const ReelsPage = lazy(() => import("./pages/ReelsPage"));
@@ -97,6 +98,7 @@ const AppRoutes = () => {
           <Route path="search" element={<Search />} />
           <Route path="sports" element={<Sports />} />
           <Route path="sports/:sportSlug" element={<Sports />} />
+          <Route path="sports/live/:sport/:slug" element={<LiveMatchDetail />} />
           <Route path="sports/:sportSlug/match/:matchId" element={<MatchDetail />} />
           <Route path="short-posts" element={<ShortPostsPage />} />
           <Route path="short-posts/:id" element={<ShortPostDetail />} />
