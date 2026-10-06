@@ -4,20 +4,29 @@ import { advertisementApi } from '@/lib/api-client';
  * Upload an image file to Cloudinary through our backend API
  * @param file The image file to upload
  * @param position Optional advertisement position for proper sizing
+ * @param size Optional explicit size for dynamic ads: { width, height, sizeMode }
  * @returns Promise with the upload result containing imageUrl and publicId
  */
-export const uploadImage = async (file: File, position?: string): Promise<{ imageUrl: string; publicId: string }> => {
+export const uploadImage = async (
+  file: File,
+  position?: string,
+  size?: { width?: number | null; height?: number | null; sizeMode?: 'preset' | 'custom' }
+): Promise<{ imageUrl: string; publicId: string }> => {
   try {
     const formData = new FormData();
     formData.append('image', file);
-    
-    console.log('Uploading image to Cloudinary:', file.name, position ? `for position: ${position}` : '');
+
+    const w = size?.width ? Math.floor(Number(size.width)) : 0;
+    const h = size?.height ? Math.floor(Number(size.height)) : 0;
+    const custom = size?.sizeMode === 'custom' || (w > 0 && h > 0);
+
+    console.log('Uploading image to Cloudinary:', file.name, position ? `for position: ${position}` : '', custom && w && h ? `custom ${w}x${h}` : '');
 
     // Use the shared api-client helper with a RELATIVE endpoint.
     // Passing an absolute URL here (VITE_API_URL + path) would get prefixed
     // with API_BASE_URL again inside api.upload(), producing /api/api/...
     // which returns 404.
-    const response = await advertisementApi.uploadImage(formData, position);
+    const response = await advertisementApi.uploadImage(formData, position, custom ? { width: w || undefined, height: h || undefined, sizeMode: 'custom' } : undefined);
 
     if (response.success && response.data?.imageUrl) {
       return {
@@ -41,7 +50,7 @@ export const uploadImage = async (file: File, position?: string): Promise<{ imag
  * @returns Object with isValid flag and error message if invalid
  */
 export const validateImageFile = (file: File): { isValid: boolean; error?: string } => {
-  const maxSizeInBytes = 5 * 1024 * 1024;
+  const maxSizeInBytes = 10 * 1024 * 1024;
   if (file.size > maxSizeInBytes) {
     return {
       isValid: false,
@@ -49,7 +58,7 @@ export const validateImageFile = (file: File): { isValid: boolean; error?: strin
     };
   }
   
-  const allowedTypes = ['image/jpeg', 'image/png', 'image/jpg', 'image/webp'];
+  const allowedTypes = ['image/jpeg', 'image/png', 'image/jpg', 'image/webp', 'image/avif'];
   if (!allowedTypes.includes(file.type)) {
     return {
       isValid: false,

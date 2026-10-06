@@ -52,7 +52,7 @@ let videoCache: {
 
 // Get all videos
 export const getVideos = async (
-  language: 'hindi' | 'english' = 'hindi',
+  language: 'hindi' | 'english' | 'all' = 'hindi',
   page: number = 1,
   limit: number = 10,
   category?: string,

@@ -143,6 +143,21 @@ const Reels = () => {
     }
   });
 
+  // Persist new-reel text state so refresh doesn't wipe it (files excluded)
+  const watchedReelValues = form.watch();
+  useEffect(() => {
+    if (!isDialogOpen || editingReel) return;
+    const t = setTimeout(() => {
+      try {
+        const { title, description, category, tags, isActive, isFeatured } = watchedReelValues as any;
+        if (title || description || tags) {
+          localStorage.setItem('draft:reel:new', JSON.stringify({ title, description, category, tags, isActive, isFeatured }));
+        }
+      } catch {}
+    }, 600);
+    return () => clearTimeout(t);
+  }, [watchedReelValues, isDialogOpen, editingReel]);
+
   // Fetch reels and categories on component mount
   useEffect(() => {
     fetchReels();
@@ -178,8 +193,8 @@ const Reels = () => {
       
       if (response.success) {
         setReels(response.data);
-        // Use the count directly from response if available, otherwise calculate
-        const count = response.count || response.data.length;
+        // Backend sends the authoritative total in pagination.total
+        const count = response.pagination?.total ?? response.total ?? response.data.length;
         setTotalReels(count);
         const pages = response.pagination?.pages || 1;
         setTotalPages(pages);
@@ -209,34 +224,64 @@ const Reels = () => {
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
-    setCurrentPage(1);
-    fetchReels();
+    // Page reset triggers the [currentPage] effect which refetches.
+    // If already on page 1 no effect fires, so fetch explicitly.
+    if (currentPage === 1) {
+      fetchReels();
+    } else {
+      setCurrentPage(1);
+    }
   };
 
-  // Handle file selections
+  // Handle file selections (client-side size guards; backend caps video 100MB / image 10MB)
+  const MAX_REEL_VIDEO_BYTES = 100 * 1024 * 1024;
+  const MAX_THUMB_BYTES = 10 * 1024 * 1024;
   const handleVideoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      setSelectedVideo(e.target.files[0]);
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > MAX_REEL_VIDEO_BYTES) {
+      toast({ title: "File too large", description: "Video must be under 100MB.", variant: "destructive" });
+      e.target.value = '';
+      return;
     }
+    setSelectedVideo(file);
   };
 
   const handleThumbnailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      setSelectedThumbnail(e.target.files[0]);
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      toast({ title: "Invalid file", description: "Please select an image file.", variant: "destructive" });
+      e.target.value = '';
+      return;
     }
+    if (file.size > MAX_THUMB_BYTES) {
+      toast({ title: "File too large", description: "Thumbnail must be under 10MB.", variant: "destructive" });
+      e.target.value = '';
+      return;
+    }
+    setSelectedThumbnail(file);
   };
 
-  // Open dialog for new reel
+  // Open dialog for new reel (restores unsaved draft after refresh)
   const openNewReelDialog = () => {
     setEditingReel(null);
+    let restored: any = null;
+    try {
+      const raw = localStorage.getItem('draft:reel:new');
+      if (raw) restored = JSON.parse(raw);
+    } catch {}
     form.reset({
-      title: "",
-      description: "",
-      category: "",
-      tags: "",
-      isActive: true,
-      isFeatured: false,
+      title: restored?.title || "",
+      description: restored?.description || "",
+      category: restored?.category || "",
+      tags: restored?.tags || "",
+      isActive: restored?.isActive ?? true,
+      isFeatured: restored?.isFeatured ?? false,
     });
+    if (restored && (restored.title || restored.description)) {
+      toast({ title: "Draft restored", description: "Your unsaved reel details were restored." });
+    }
     setSelectedVideo(null);
     setSelectedThumbnail(null);
     setIsDialogOpen(true);
@@ -249,7 +294,7 @@ const Reels = () => {
       title: reel.title,
       description: reel.description || "",
       category: typeof reel.category === 'object' ? reel.category._id : reel.category || "",
-      tags: reel.tags.join(", "),
+      tags: (reel.tags || []).join(", "),
       isActive: reel.isActive,
       isFeatured: reel.isFeatured,
     });
@@ -311,6 +356,12 @@ const Reels = () => {
   const onSubmit = async (values: z.infer<typeof reelFormSchema>) => {
     try {
       setIsSubmitting(true);
+
+      if (!editingReel && !selectedVideo) {
+        toast({ title: "Video required", description: "Please select a video file for the new reel.", variant: "destructive" });
+        setIsSubmitting(false);
+        return;
+      }
       
       // Prepare form data for API
       const formData = new FormData();
@@ -352,10 +403,14 @@ const Reels = () => {
       if (response.success) {
         toast({
           title: "Success",
-          description: editingReel 
-            ? "Reel updated successfully" 
+          description: editingReel
+            ? "Reel updated successfully"
             : "Reel created successfully",
         });
+
+        if (!editingReel) {
+          try { localStorage.removeItem('draft:reel:new'); } catch {}
+        }
         
         // Close dialog and reset form
         setIsDialogOpen(false);
@@ -463,7 +518,7 @@ const Reels = () => {
         </div>
       </div>
       
-      <div className="border rounded-md">
+      <div className="border rounded-md overflow-x-auto">
         <Table>
           <TableHeader>
             <TableRow>
@@ -700,9 +755,9 @@ const Reels = () => {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Category</FormLabel>
-                    <Select 
-                      onValueChange={field.onChange} 
-                      defaultValue={field.value}
+                    <Select
+                      onValueChange={(v) => field.onChange(v === '__none' ? '' : v)}
+                      value={field.value || '__none'}
                     >
                       <FormControl>
                         <SelectTrigger>
@@ -710,7 +765,7 @@ const Reels = () => {
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="">Uncategorized</SelectItem>
+                        <SelectItem value="__none">Uncategorized</SelectItem>
                         {categories.map((category) => (
                           <SelectItem key={category._id} value={category._id}>
                             {category.name}
@@ -752,7 +807,7 @@ const Reels = () => {
                   className="mt-1"
                 />
                 <p className="text-sm text-gray-500 mt-1">
-                  Upload a video file. Max size 50MB.
+                  Upload a video file. Max size 100MB.
                 </p>
               </div>
               

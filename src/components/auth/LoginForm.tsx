@@ -116,8 +116,6 @@ const LoginForm = () => {
     
     setIsLoading(true);
 
-    console.log('LoginForm: Attempting login with', { email: trimmedEmail, passwordLength: password.length });
-
     try {
       // Make a direct API call first to capture detailed debug info
       if (showDebug) {
@@ -206,7 +204,7 @@ const LoginForm = () => {
             <li>The API URL is misconfigured</li>
           </ul>
           <p className="text-red-700 text-xs mt-2">
-            Please make sure the server is running at {import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}
+            Please make sure the server is running at {import.meta.env.VITE_API_URL || 'http://localhost:5003/api'}
           </p>
         </div>
       )}

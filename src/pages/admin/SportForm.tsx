@@ -34,6 +34,39 @@ const SportForm = () => {
   const [loading, setLoading] = useState(isEditMode);
   const [saving, setSaving] = useState(false);
 
+  // Restore unsaved new-sport draft after refresh
+  useEffect(() => {
+    if (isEditMode) return;
+    try {
+      const raw = localStorage.getItem('draft:sport:new');
+      if (raw) {
+        const d = JSON.parse(raw);
+        if (d && (d.name || d.slug || d.icon)) {
+          if (d.name) setName(d.name);
+          if (d.slug) { setSlug(d.slug); setSlugTouched(true); }
+          if (d.icon) setIcon(d.icon);
+          if (typeof d.displayOrder === 'number') setDisplayOrder(d.displayOrder);
+          if (typeof d.active === 'boolean') setActive(d.active);
+          toast({ title: 'Draft restored', description: 'Your unsaved sport details were restored.' });
+        }
+      }
+    } catch {}
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Persist new-sport text state so refresh doesn't wipe it
+  useEffect(() => {
+    if (isEditMode) return;
+    const t = setTimeout(() => {
+      try {
+        if (name || slug || icon) {
+          localStorage.setItem('draft:sport:new', JSON.stringify({ name, slug, icon, displayOrder, active }));
+        }
+      } catch {}
+    }, 600);
+    return () => clearTimeout(t);
+  }, [name, slug, icon, displayOrder, active, isEditMode]);
+
   useEffect(() => {
     if (!isEditMode) return;
     const fetchSport = async () => {
@@ -96,6 +129,7 @@ const SportForm = () => {
         toast({ title: "Sport Updated", description: `"${payload.name}" has been updated.` });
       } else {
         await createSport(payload as any);
+        try { localStorage.removeItem('draft:sport:new'); } catch {}
         toast({ title: "Sport Created", description: `"${payload.name}" has been created.` });
       }
       navigate('/admin/sports');

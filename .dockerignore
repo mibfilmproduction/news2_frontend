@@ -51,16 +51,9 @@ docs/
 scripts/
 *.sh
 
-# Config files (not needed in production image)
+# Config files (needed for vite build - do NOT ignore)
 .eslint.config.js
 .prettierrc
-tailwind.config.ts
-postcss.config.js
-tsconfig.json
-tsconfig.app.json
-tsconfig.node.json
-vite.config.ts
-components.json
 
 # Source maps
 *.map

@@ -1,6 +1,7 @@
 import type { ApiResponse } from './api';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+const RAW_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5003/api';
+const API_BASE_URL = RAW_BASE_URL.replace(/\/+$/, '');
 
 interface RequestOptions extends RequestInit {
   params?: Record<string, string | number | boolean | undefined>;
@@ -80,8 +81,10 @@ async function handleResponse<T>(response: Response): Promise<ApiResponse<T>> {
   if (!response.ok) {
     return {
       success: false,
-      message: data.message || `HTTP ${response.status}: ${response.statusText}`,
-    };
+      message: data.message || data.error || `HTTP ${response.status}: ${response.statusText}`,
+      error: data.error || data.message,
+      status: response.status,
+    } as ApiResponse<T>;
   }
 
   return data as ApiResponse<T>;
@@ -108,7 +111,7 @@ function createHeaders(requireAuth = true, hasBody = false, isFormData = false):
 
 export const api = {
   async request<T = any>(endpoint: string, options: RequestOptions = {}): Promise<ApiResponse<T>> {
-    const { params, requireAuth = true, timeout = 30000, ...fetchOptions } = options;
+    const { params, requireAuth = true, timeout = 120000, ...fetchOptions } = options;
     const url = buildUrl(endpoint, params);
 
     const controller = new AbortController();
@@ -207,10 +210,21 @@ export const authApi = {
       }
       return res;
     }),
-  getCurrentUser: () => api.get<{ user: any }>('/auth/me'),
+  getCurrentUser: () => api.get<{ user: any }>('/auth/me').then(res => {
+    if (res.success && (res as any).user && !(res as any).data) {
+      return { success: true, data: { user: (res as any).user } };
+    }
+    return res;
+  }),
   forgotPassword: (email: string) => api.post<{ resetToken: string }>('/auth/forgotpassword', { email }, { requireAuth: false }),
   resetPassword: (resetToken: string, password: string) => api.put<{ message: string }>(`/auth/resetpassword/${resetToken}`, { password }, { requireAuth: false }),
-  verifyToken: () => api.get<{ user: any }>('/auth/verify'),
+  verifyToken: () => api.get<{ user: any }>('/auth/verify').then(res => {
+    // Normalize {success,user} -> {success,data:{user}} so callers can use one shape
+    if (res.success && (res as any).user && !(res as any).data) {
+      return { success: true, data: { user: (res as any).user } };
+    }
+    return res;
+  }),
   testConnection: () => api.get<{ status: string }>('/health', {}, { requireAuth: false }),
   updateProfile: (userData: any) => api.put<{ user: any }>('/users/profile', userData),
 };
@@ -250,9 +264,10 @@ export const categoryApi = {
 
 export const commentApi = {
   getCommentsByArticle: (articleId: string) => api.get<any[]>(`/comments/article/${articleId}`, {}, { requireAuth: false }),
+  getCommentReplies: (commentId: string) => api.get<any[]>(`/comments/${commentId}/replies`, {}, { requireAuth: false }),
   getAllComments: (params?: any) => api.get<any[]>('/comments', params),
   createComment: (commentData: any) => api.post<any>('/comments', commentData),
-  updateCommentStatus: (id: string, status: string) => api.put<any>(`/comments/${id}`, { status }),
+  updateCommentStatus: (id: string, status: string) => api.put<any>(`/comments/${id}/status`, { status }),
   deleteComment: (id: string) => api.delete<null>(`/comments/${id}`),
 };
 
@@ -313,9 +328,14 @@ export const advertisementApi = {
   createAdvertisement: (adData: any) => api.post<any>('/advertisements', adData),
   updateAdvertisement: (id: string, adData: any) => api.put<any>(`/advertisements/${id}`, adData),
   deleteAdvertisement: (id: string) => api.delete<null>(`/advertisements/${id}`),
-  uploadImage: (formData: FormData, position?: string) => {
+  uploadImage: (formData: FormData, position?: string, size?: { width?: number; height?: number; sizeMode?: string }) => {
     let url = '/advertisements/upload-image';
-    if (position) url += `?position=${encodeURIComponent(position)}`;
+    const params: string[] = [];
+    if (position) params.push(`position=${encodeURIComponent(position)}`);
+    if (size?.width) params.push(`width=${encodeURIComponent(String(size.width))}`);
+    if (size?.height) params.push(`height=${encodeURIComponent(String(size.height))}`);
+    if (size?.sizeMode) params.push(`sizeMode=${encodeURIComponent(size.sizeMode)}`);
+    if (params.length) url += `?${params.join('&')}`;
     return api.upload<any>(url, formData);
   },
   trackImpression: (id: string) => api.post<any>(`/advertisements/${id}/impression`, {}, { requireAuth: false }),

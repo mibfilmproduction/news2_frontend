@@ -24,6 +24,7 @@ import { format } from 'date-fns';
 import { Search as SearchIcon, Calendar, Tag, Filter } from 'lucide-react';
 import { api } from '@/lib/api-client';
 import SEO from '@/components/SEO';
+import { ALL_CITIES, ALL_CITIES_LABEL, ALL_STATES, ALL_STATES_LABEL, STATES, citiesForState, cityLabel, isAllCities, isAllStates, stateLabel } from '@/lib/cities';
 
 interface Article {
   _id: string;
@@ -33,6 +34,7 @@ interface Article {
   content: string;
   image: string;
   category: string;
+  city?: string;
   tags: string[];
   author: {
     _id: string;
@@ -58,11 +60,15 @@ const Search = () => {
   const initialQuery = queryParams.get('q') || '';
   const initialCategory = queryParams.get('category') || '';
   const initialTag = queryParams.get('tag') || '';
+  const initialCity = queryParams.get('city') || ALL_CITIES;
+  const initialState = queryParams.get('state') || ALL_STATES;
   const initialPage = parseInt(queryParams.get('page') || '1', 10);
 
   const [searchQuery, setSearchQuery] = useState(initialQuery);
   const [selectedCategory, setSelectedCategory] = useState(initialCategory);
   const [selectedTag, setSelectedTag] = useState(initialTag);
+  const [selectedCity, setSelectedCity] = useState(initialCity);
+  const [selectedState, setSelectedState] = useState(initialState);
   const [currentPage, setCurrentPage] = useState(initialPage);
   const [articles, setArticles] = useState<Article[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -81,7 +87,7 @@ const Search = () => {
 
   useEffect(() => {
     // Search articles based on URL parameters
-    if (initialQuery || initialCategory || initialTag) {
+    if (initialQuery || initialCategory || initialTag || (initialCity && !isAllCities(initialCity)) || (initialState && !isAllStates(initialState))) {
       searchArticles();
     }
   }, [location.search]);
@@ -111,13 +117,15 @@ const Search = () => {
     }
   };
 
-  const searchArticles = async (pageOverride?: number) => {
+  const searchArticles = async (pageOverride?: number, overrides?: { city?: string; state?: string }) => {
     try {
       setLoading(true);
       setNoResults(false);
 
       // Use the explicit page when provided (fixes stale-state pagination bug)
       const page = pageOverride ?? currentPage;
+      const city = overrides?.city ?? selectedCity;
+      const state = overrides?.state ?? selectedState;
 
       const params: Record<string, string> = {
         page: page.toString(),
@@ -134,6 +142,13 @@ const Search = () => {
 
       if (selectedTag) {
         params.tag = selectedTag;
+      }
+
+      if (city && !isAllCities(city)) {
+        params.city = city;
+      }
+      if (state && !isAllStates(state)) {
+        params.state = state;
       }
 
       const response = await api.get('/news/search', params);
@@ -162,44 +177,61 @@ const Search = () => {
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     setCurrentPage(1);
-    updateUrlAndSearch(searchQuery, selectedTag, selectedCategory, 1);
+    updateUrlAndSearch(searchQuery, selectedTag, selectedCategory, selectedCity, selectedState, 1);
   };
 
   const handleCategoryChange = (value: string) => {
     setSelectedCategory(value);
     setCurrentPage(1);
-    updateUrlAndSearch(searchQuery, selectedTag, value, 1);
+    updateUrlAndSearch(searchQuery, selectedTag, value, selectedCity, selectedState, 1);
+  };
+
+  const handleCityChange = (value: string) => {
+    setSelectedCity(value);
+    setCurrentPage(1);
+    updateUrlAndSearch(searchQuery, selectedTag, selectedCategory, value, selectedState, 1);
+  };
+
+  const handleStateChange = (value: string) => {
+    setSelectedState(value);
+    setSelectedCity(ALL_CITIES);
+    setCurrentPage(1);
+    updateUrlAndSearch(searchQuery, selectedTag, selectedCategory, ALL_CITIES, value, 1);
   };
 
   const handleTagClick = (tag: string) => {
     setSelectedTag(tag);
     setCurrentPage(1);
-    updateUrlAndSearch(searchQuery, tag, selectedCategory, 1);
+    updateUrlAndSearch(searchQuery, tag, selectedCategory, selectedCity, selectedState, 1);
   };
 
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
-    updateUrlAndSearch(searchQuery, selectedTag, selectedCategory, page);
+    updateUrlAndSearch(searchQuery, selectedTag, selectedCategory, selectedCity, selectedState, page);
   };
 
   const updateUrlAndSearch = (
     query = searchQuery,
     tag = selectedTag,
     category = selectedCategory,
+    city = selectedCity,
+    state = selectedState,
     page = 1
   ) => {
     const params = new URLSearchParams();
-    
+
     if (query) params.set('q', query);
     if (category) params.set('category', category);
     if (tag) params.set('tag', tag);
+    if (city && !isAllCities(city)) params.set('city', city);
+    if (state && !isAllStates(state)) params.set('state', state);
     if (page > 1) params.set('page', page.toString());
-    
+
     const newUrl = `${window.location.pathname}?${params.toString()}`;
     window.history.pushState({}, '', newUrl);
-    
-    // Trigger search with the explicit page (avoids stale state)
-    searchArticles(page);
+
+    // Pass city explicitly (state may still hold the previous value)
+    searchArticles(page, { city, state });
   };
 
   // Keep URL in sync with browser back/forward navigation
@@ -209,13 +241,17 @@ const Search = () => {
       const q = params.get('q') || '';
       const cat = params.get('category') || '';
       const tag = params.get('tag') || '';
+      const city = params.get('city') || ALL_CITIES;
+      const state = params.get('state') || ALL_STATES;
       const page = parseInt(params.get('page') || '1', 10);
 
       setSearchQuery(q);
       setSelectedCategory(cat);
       setSelectedTag(tag);
+      setSelectedCity(city);
+      setSelectedState(state);
       setCurrentPage(page);
-      searchArticles(page);
+      searchArticles(page, { city, state });
     };
 
     window.addEventListener('popstate', handlePopState);
@@ -225,7 +261,10 @@ const Search = () => {
   const getImageUrl = (imagePath: string) => {
     if (!imagePath) return '/placeholder-image.jpg';
     if (imagePath.startsWith('http')) return imagePath;
-    return `${import.meta.env.VITE_API_URL}/uploads/${imagePath}`;
+    const base = (import.meta.env.VITE_MEDIA_URL as string) || ((import.meta.env.VITE_API_URL as string || '').replace(/\/api\/?$/, '') + '/uploads');
+    const clean = String(imagePath).replace(/^\/+/, '');
+    if (clean.startsWith('uploads/')) return `${base.replace(/\/uploads\/?$/, '')}/${clean}`;
+    return `${base.replace(/\/$/, '')}/${clean}`;
   };
 
   const formatDate = (dateString: string) => {
@@ -300,15 +339,81 @@ const Search = () => {
               </div>
               
               {selectedCategory && (
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
+                <Button
+                  variant="ghost"
+                  size="sm"
                   onClick={() => {
                     setSelectedCategory('');
-                    updateUrlAndSearch(searchQuery, selectedTag, '');
+                    updateUrlAndSearch(searchQuery, selectedTag, '', selectedCity, selectedState);
                   }}
                 >
                   Clear Category
+                </Button>
+              )}
+
+              <div>
+                <label htmlFor="state" className="block text-sm font-medium mb-1">
+                  State
+                </label>
+                <Select
+                  value={selectedState}
+                  onValueChange={handleStateChange}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder={ALL_STATES_LABEL} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={ALL_STATES}>{ALL_STATES_LABEL}</SelectItem>
+                    {STATES.map((s) => (
+                      <SelectItem key={s} value={s}>{s}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {!isAllStates(selectedState) && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    setSelectedState(ALL_STATES);
+                    updateUrlAndSearch(searchQuery, selectedTag, selectedCategory, ALL_CITIES, ALL_STATES);
+                  }}
+                >
+                  Clear State
+                </Button>
+              )}
+
+              <div>
+                <label htmlFor="city" className="block text-sm font-medium mb-1">
+                  City
+                </label>
+                <Select
+                  value={selectedCity}
+                  onValueChange={handleCityChange}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder={ALL_CITIES_LABEL} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={ALL_CITIES}>{ALL_CITIES_LABEL}</SelectItem>
+                    {citiesForState(selectedState).map((c) => (
+                      <SelectItem key={c} value={c}>{c}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {!isAllCities(selectedCity) && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    setSelectedCity(ALL_CITIES);
+                    updateUrlAndSearch(searchQuery, selectedTag, selectedCategory, ALL_CITIES, selectedState);
+                  }}
+                >
+                  Clear City
                 </Button>
               )}
             </div>
@@ -330,13 +435,13 @@ const Search = () => {
             </div>
             
             {selectedTag && (
-              <Button 
-                variant="ghost" 
-                size="sm" 
+              <Button
+                variant="ghost"
+                size="sm"
                 className="mt-4"
                 onClick={() => {
                   setSelectedTag('');
-                  updateUrlAndSearch(searchQuery, '', selectedCategory);
+                  updateUrlAndSearch(searchQuery, '', selectedCategory, selectedCity);
                 }}
               >
                 Clear Tag
@@ -389,6 +494,9 @@ const Search = () => {
                         <Badge variant="outline">
                           {getCategoryName(article.category)}
                         </Badge>
+                        {!isAllCities(article.city) && (
+                          <Badge variant="secondary">{cityLabel(article.city)}</Badge>
+                        )}
                         {article.isBreaking && (
                           <Badge variant="destructive">Breaking</Badge>
                         )}

@@ -1,6 +1,6 @@
 
 import React, { useEffect, useState } from 'react';
-import { Outlet, Link } from 'react-router-dom';
+import { Outlet, Link, useLocation } from 'react-router-dom';
 import NavbarTop from './NavbarTop';
 import BreakingNews from './BreakingNews';
 import CookieConsent from './CookieConsent';
@@ -58,6 +58,9 @@ const SectionHeading = ({ children }: { children: React.ReactNode }) => (
 
 const Layout = () => {
   const { language } = useLanguage();
+  const location = useLocation();
+  // Home page: no top padding so header ad sticks to navbar (min gap)
+  const isHome = location.pathname === '/';
   const [categories, setCategories] = useState<CategoryType[]>([]);
   const [siteTitle, setSiteTitle] = useState('Mibnews');
   const [siteTagline, setSiteTagline] = useState(
@@ -132,7 +135,7 @@ const Layout = () => {
 
       <BreakingNews />
 
-      <main className="flex-1 container mx-auto px-4 py-6">
+      <main className={`flex-1 container mx-auto px-4 ${isHome ? 'pt-1 pb-6' : 'py-6'}`}>
         <Outlet />
       </main>
 
@@ -141,7 +144,7 @@ const Layout = () => {
         <div className="h-1 w-full bg-gradient-to-r from-red-600 via-red-500 to-blue-900" />
 
         <div className="container mx-auto px-4 py-12">
-          <div className="grid grid-cols-1 gap-10 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5">
+          <div className="grid grid-cols-1 gap-8 lg:grid-cols-5 lg:gap-10">
             {/* Brand + contact */}
             <div>
               <Link to="/" className="inline-block rounded-xl bg-white px-4 py-2 shadow-lg">
@@ -185,6 +188,8 @@ const Layout = () => {
               </form>
             </div>
 
+            {/* ROW 2 mobile: Quick + Categories side-by-side */}
+            <div className="grid grid-cols-2 items-start gap-6 lg:contents">
             {/* Quick links */}
             <nav aria-label="Quick links">
               <SectionHeading>Quick Links</SectionHeading>
@@ -230,6 +235,9 @@ const Layout = () => {
               </ul>
             </nav>
 
+            </div>
+            {/* ROW 3 mobile: Company + Connect side-by-side */}
+            <div className="grid grid-cols-2 items-start gap-6 lg:contents">
             {/* Company */}
             <div>
               <SectionHeading>Company</SectionHeading>
@@ -292,6 +300,7 @@ const Layout = () => {
                   +91 99992 92210
                 </a>
               </div>
+            </div>
             </div>
           </div>
         </div>

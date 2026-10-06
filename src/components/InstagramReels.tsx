@@ -133,7 +133,7 @@ const InstagramReels: React.FC<InstagramReelsProps> = ({
       <div className="p-4 text-center">
         <p className="text-red-500 mb-2">{error}</p>
         <Button 
-          variant="outline" 
+          variant="outline"
           onClick={() => {
             setError(null);
             loadInstagramReels();
@@ -146,9 +146,9 @@ const InstagramReels: React.FC<InstagramReelsProps> = ({
   }
   
   return (
-    <div className="space-y-4">
+    <div className="">
       {/* Section header with Instagram branding */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between mb-1">
         <div className="flex items-center space-x-2">
           <Instagram className="h-5 w-5 text-pink-500" />
           <h3 className="text-xl font-bold">Instagram Reels</h3>
@@ -171,7 +171,7 @@ const InstagramReels: React.FC<InstagramReelsProps> = ({
       
       {/* Loading state */}
       {loading && reels.length === 0 && (
-        <div className="flex justify-center py-12">
+        <div className="flex justify-center py-2">
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
         </div>
       )}
@@ -233,7 +233,7 @@ const InstagramReels: React.FC<InstagramReelsProps> = ({
       
       {/* Load more button */}
       {reels.length > 0 && hasMore && (
-        <div className="flex justify-center mt-8">
+        <div className="flex justify-center mt-1.5">
           <Button 
             variant="outline" 
             onClick={loadMoreReels}

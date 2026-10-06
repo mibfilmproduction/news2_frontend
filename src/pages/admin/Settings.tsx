@@ -50,6 +50,7 @@ const Settings = () => {
   const [settings, setSettings] = useState<SettingsState>(DEFAULT_SETTINGS);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [loaded, setLoaded] = useState(false);
   const { articlesPerPage, maintenanceMode, enableComments, requireApproval,
     enableRegistration, enableSocialLogin, cacheTimeout } = settings;
 
@@ -65,6 +66,7 @@ const Settings = () => {
             ...response.data.user,
             ...response.data.performance,
           });
+          setLoaded(true);
         }
       } catch (error) {
         console.error('Failed to load settings:', error);
@@ -85,6 +87,11 @@ const Settings = () => {
   };
 
   const saveGroup = async (group: string, groupSettings: Partial<SettingsState>) => {
+    if (!loaded) {
+      toast({ title: "Not ready", description: "Settings haven't loaded yet — please wait.", variant: "destructive" });
+      return;
+    }
+    if (saving) return;
     setSaving(true);
     try {
       const response = await api.put('/settings', { group, settings: groupSettings });
@@ -207,7 +214,7 @@ const Settings = () => {
               </div>
             </CardContent>
             <CardFooter>
-              <Button onClick={handleSaveGeneralSettings}>Save Changes</Button>
+              <Button onClick={handleSaveGeneralSettings} disabled={saving || !loaded}>{saving ? "Saving…" : "Save Changes"}</Button>
             </CardFooter>
           </Card>
         </TabsContent>
@@ -243,7 +250,7 @@ const Settings = () => {
               </div>
             </CardContent>
             <CardFooter>
-              <Button onClick={handleSaveContentSettings}>Save Changes</Button>
+              <Button onClick={handleSaveContentSettings} disabled={saving || !loaded}>{saving ? "Saving…" : "Save Changes"}</Button>
             </CardFooter>
           </Card>
         </TabsContent>
@@ -309,7 +316,7 @@ const Settings = () => {
               </div>
             </CardContent>
             <CardFooter>
-              <Button onClick={handleSaveUserSettings}>Save Changes</Button>
+              <Button onClick={handleSaveUserSettings} disabled={saving || !loaded}>{saving ? "Saving…" : "Save Changes"}</Button>
             </CardFooter>
           </Card>
         </TabsContent>
@@ -346,7 +353,7 @@ const Settings = () => {
               </div>
             </CardContent>
             <CardFooter>
-              <Button onClick={handleSavePerformanceSettings}>Save Changes</Button>
+              <Button onClick={handleSavePerformanceSettings} disabled={saving || !loaded}>{saving ? "Saving…" : "Save Changes"}</Button>
             </CardFooter>
           </Card>
         </TabsContent>

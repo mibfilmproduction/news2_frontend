@@ -1,6 +1,6 @@
 import axios, { AxiosRequestConfig, AxiosHeaders, AxiosError, AxiosResponse } from 'axios';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5003/api';
 
 // Role types for authorization
 export type UserRole = 'user' | 'editor' | 'admin';
@@ -89,9 +89,11 @@ api.interceptors.response.use(
         error.message = 'Authentication failed: ' + 
           ((error.response.data as any)?.message || 'Please log in again');
           
-        // Clear auth tokens to prevent future failed requests
+        // Clear all auth state (token + user) to prevent ghost-auth loops
         localStorage.removeItem('token');
+        localStorage.removeItem('user');
         sessionStorage.removeItem('token');
+        sessionStorage.removeItem('user');
         
         // Set error type for client handling
         (error as any).type = AuthErrorType.UNAUTHORIZED;

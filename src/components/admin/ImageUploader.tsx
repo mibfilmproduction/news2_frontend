@@ -8,13 +8,15 @@ interface ImageUploaderProps {
   defaultImage?: string;
   className?: string;
   position?: string; // Advertisement position for proper sizing
+  customSize?: { width?: number | null; height?: number | null; sizeMode?: 'preset' | 'custom' };
 }
 
 const ImageUploader: React.FC<ImageUploaderProps> = ({ 
   onUploadComplete, 
   defaultImage = "",
   className = "",
-  position
+  position,
+  customSize
 }) => {
   const [isUploading, setIsUploading] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string>(defaultImage);
@@ -40,8 +42,8 @@ const ImageUploader: React.FC<ImageUploaderProps> = ({
     try {
       setIsUploading(true);
       
-      // Upload to Cloudinary with position for proper sizing
-      const result = await uploadImage(file, position);
+      // Upload to Cloudinary with position + optional custom size for proper sizing
+      const result = await uploadImage(file, position, customSize);
       
       // Call the callback with the uploaded image URL
       onUploadComplete(result.imageUrl, result.publicId);

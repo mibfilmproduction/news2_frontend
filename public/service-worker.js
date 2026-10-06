@@ -111,21 +111,32 @@ self.addEventListener('fetch', (event) => {
   );
 });
 
-// Handle push notifications
+// Handle push notifications (null-safe: some pushes carry no payload)
 self.addEventListener('push', (event) => {
-  const data = event.data.json();
+  let data = { title: 'Mibnews', body: 'New update available', url: '/' };
+  try {
+    if (event.data) {
+      const parsed = event.data.json();
+      data = { ...data, ...parsed };
+    }
+  } catch (e) {
+    try {
+      const text = event.data ? event.data.text() : '';
+      if (text) data.body = text;
+    } catch {}
+  }
   
   const options = {
     body: data.body,
     icon: '/mibnews-logo.png',
     badge: '/mibnews-logo.png',
     data: {
-      url: data.url
+      url: data.url || '/'
     }
   };
   
   event.waitUntil(
-    self.registration.showNotification(data.title, options)
+    self.registration.showNotification(data.title || 'Mibnews', options).catch(() => {})
   );
 });
 

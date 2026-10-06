@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import SEO from '@/components/SEO';
 import { api } from '@/lib/api-client';
+import { useLikes } from '@/hooks/useLikes';
 import { getImageUrl } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
@@ -21,6 +22,7 @@ interface Reel {
   duration: number;
   views: number;
   likes: number;
+  isLiked?: boolean;
   comments: number;
   shares?: number;
   author: {
@@ -63,6 +65,8 @@ const ReelDetail = () => {
   const [relatedReels, setRelatedReels] = useState<Reel[]>([]);
   const videoRef = useRef<HTMLVideoElement>(null);
   const { toast } = useToast();
+  const navigate = useNavigate();
+  const { isLiked, toggleLike } = useLikes('reels');
 
   // Add debugging logs to track the process
   console.log('ReelDetail initialized with ID:', id);
@@ -81,7 +85,7 @@ const ReelDetail = () => {
         console.log('Fetching reel with ID:', id);
         
         // Direct API call with better error handling
-        const apiUrl = `${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/reels/${id}`;
+        const apiUrl = `${import.meta.env.VITE_API_URL || 'http://localhost:5003/api'}/reels/${id}`;
         console.log('Fetching from URL:', apiUrl);
         
         try {
@@ -142,7 +146,7 @@ const ReelDetail = () => {
           // Fall back to fetching from list
           console.log('Trying fallback: fetching from reels list');
           
-          const listUrl = `${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/reels?limit=50`;
+          const listUrl = `${import.meta.env.VITE_API_URL || 'http://localhost:5003/api'}/reels?limit=50`;
           console.log('Fetching reels list from:', listUrl);
           
           const listResponse = await fetch(listUrl);
@@ -217,16 +221,16 @@ const ReelDetail = () => {
           ? currentReel.category 
           : currentReel.category._id;
         
-        relatedUrl = `${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/reels?category=${categoryId}&limit=3`;
+        relatedUrl = `${import.meta.env.VITE_API_URL || 'http://localhost:5003/api'}/reels?category=${categoryId}&limit=3`;
       }
       // If no category but has tags, try to find by tag
       else if (currentReel.tags && currentReel.tags.length > 0) {
         const tag = currentReel.tags[0];
-        relatedUrl = `${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/reels?tag=${tag}&limit=3`;
+        relatedUrl = `${import.meta.env.VITE_API_URL || 'http://localhost:5003/api'}/reels?tag=${tag}&limit=3`;
       } 
       // Otherwise just get the latest reels
       else {
-        relatedUrl = `${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/reels?limit=3`;
+        relatedUrl = `${import.meta.env.VITE_API_URL || 'http://localhost:5003/api'}/reels?limit=3`;
       }
       
       console.log('Fetching related reels from:', relatedUrl);
@@ -291,27 +295,17 @@ const ReelDetail = () => {
 
   const handleLike = async () => {
     if (!reel) return;
-    
-    try {
-      const response = await api.post(`/reels/${reel._id}/like`);
-      if (response.success) {
-        setReel({
-          ...reel,
-          likes: reel.likes + 1
-        });
-        toast({
-          title: 'Success',
-          description: 'You liked this reel!',
-          variant: 'default',
-        });
-      }
-    } catch (err) {
-      toast({
-        title: "Error",
-        description: "Failed to like reel. Please try again.",
-        variant: "destructive",
-      });
+    const result = await toggleLike(reel._id, reel.likes);
+    if (!result.ok && result.reason === 'login') {
+      toast({ title: 'Login required', description: 'Please login to like reels.', variant: 'destructive' });
+      navigate('/login');
+      return;
     }
+    if (!result.ok) {
+      toast({ title: 'Error', description: 'Failed to like reel. Please try again.', variant: 'destructive' });
+      return;
+    }
+    setReel({ ...reel, likes: result.likes, isLiked: result.liked });
   };
 
   const handleShare = async () => {
@@ -383,7 +377,7 @@ const ReelDetail = () => {
       console.log('Submitting comment for reel ID:', reel._id);
       
       // Direct fetch call for better error handling
-      const apiUrl = `${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/reels/${reel._id}/comments`;
+      const apiUrl = `${import.meta.env.VITE_API_URL || 'http://localhost:5003/api'}/reels/${reel._id}/comments`;
       const response = await fetch(apiUrl, {
         method: 'POST',
         headers: {
@@ -686,13 +680,14 @@ const ReelDetail = () => {
                 <span>{reel.views} views</span>
               </div>
               
-              <Button 
-                variant="ghost" 
-                size="sm" 
+              <Button
+                variant="ghost"
+                size="sm"
                 className="flex items-center space-x-2"
+                aria-pressed={reel ? isLiked(reel._id, reel.isLiked) : false}
                 onClick={handleLike}
               >
-                <Heart className="h-4 w-4" /> <span>{reel.likes} likes</span>
+                <Heart className={`h-4 w-4 ${reel && isLiked(reel._id, reel.isLiked) ? 'fill-red-500 text-red-500' : ''}`} /> <span>{reel.likes} likes</span>
               </Button>
               
               <Button 

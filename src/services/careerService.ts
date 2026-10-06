@@ -183,13 +183,13 @@ export const getJobApplications = async (params?: {
 }) => {
   try {
     const queryParams: Record<string, string | number | boolean | undefined> = {};
-    if (params?.jobId) queryParams.job = params.jobId;
+    if (params?.jobId) queryParams.jobId = params.jobId;
     if (params?.status) queryParams.status = params.status;
     if (params?.page) queryParams.page = params.page;
     if (params?.limit) queryParams.limit = params.limit;
 
     const response = await careerApi.getApplications?.(queryParams) ?? 
-      await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/careers/applications?${new URLSearchParams(Object.entries(queryParams).map(([key, value]) => [key, String(value)])).toString()}`, {
+      await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5003/api'}/careers/applications?${new URLSearchParams(Object.entries(queryParams).map(([key, value]) => [key, String(value)])).toString()}`, {
         headers: { 'Authorization': `Bearer ${localStorage.getItem('token') || ''}` }
       }).then(r => r.json());
 
@@ -218,7 +218,7 @@ export const updateApplicationStatus = async (
 ) => {
   try {
     const response = await careerApi.updateApplicationStatus?.(applicationId, status) ??
-      await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/careers/applications/${applicationId}/status`, {
+      await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5003/api'}/careers/applications/${applicationId}/status`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
@@ -242,7 +242,7 @@ export const updateApplicationStatus = async (
 export const getApplicationStats = async () => {
   try {
     const response = await careerApi.getStats?.() ??
-      await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/careers/stats`, {
+      await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5003/api'}/careers/stats`, {
         headers: { 'Authorization': `Bearer ${localStorage.getItem('token') || ''}` }
       }).then(r => r.json());
 

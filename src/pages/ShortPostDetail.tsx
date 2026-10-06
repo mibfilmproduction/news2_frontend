@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import SEO from '@/components/SEO';
 import { api } from '@/lib/api-client';
+import { useLikes } from '@/hooks/useLikes';
 import { getImageUrl } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
@@ -23,6 +24,7 @@ interface ShortPost {
     avatar?: string;
   } | string;
   likes: number;
+  isLiked?: boolean;
   comments: number;
   shares: number;
   tags: string[];
@@ -51,6 +53,8 @@ const ShortPostDetail = () => {
   const [newComment, setNewComment] = useState('');
   const [relatedPosts, setRelatedPosts] = useState<ShortPost[]>([]);
   const { toast } = useToast();
+  const navigate = useNavigate();
+  const { isLiked, toggleLike } = useLikes('short-posts');
 
   // Function to fetch comments for a post
   const fetchComments = async (postId: string) => {
@@ -74,7 +78,7 @@ const ShortPostDetail = () => {
       
       // Ensure we have a base URL
       if (!baseUrl) {
-        baseUrl = 'http://localhost:5000/api';
+        baseUrl = 'http://localhost:5003/api';
       }
       
       // Ensure baseUrl doesn't end with a slash
@@ -169,7 +173,7 @@ const ShortPostDetail = () => {
           // Direct API call as fallback
           let baseUrl = import.meta.env.VITE_API_URL;
           if (!baseUrl) {
-            baseUrl = 'http://localhost:5000/api';
+            baseUrl = 'http://localhost:5003/api';
           }
           
           // Ensure baseUrl doesn't end with a slash
@@ -251,73 +255,20 @@ const ShortPostDetail = () => {
     fetchPost();
   }, [id, toast]);
 
-  // Handle like action
+  // Handle like toggle — one user one like, red fill when liked
   const handleLike = async () => {
     if (!post) return;
-    
-    try {
-      // Optimistically update the UI
-      setPost(prevPost => {
-        if (!prevPost) return prevPost;
-        return {
-          ...prevPost,
-          likes: prevPost.likes + 1
-        };
-      });
-      
-      // Try using API client first
-      try {
-        await api.post(`/short-posts/${post._id}/like`);
-      } catch (clientError) {
-        console.warn('API client failed, falling back to direct fetch', clientError);
-        
-        // Direct API call as fallback
-        let baseUrl = import.meta.env.VITE_API_URL;
-        if (!baseUrl) {
-          baseUrl = 'http://localhost:5000/api';
-        }
-        
-        // Ensure baseUrl doesn't end with a slash
-        if (baseUrl.endsWith('/')) {
-          baseUrl = baseUrl.slice(0, -1);
-        }
-        
-        const apiUrl = `${baseUrl}/short-posts/${post._id}/like`;
-        const response = await fetch(apiUrl, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          }
-        });
-        
-        if (!response.ok) {
-          throw new Error(`Failed to like post. Server returned ${response.status}`);
-        }
-      }
-      
-      toast({
-        title: 'Success',
-        description: 'You liked this post!',
-        variant: 'default',
-      });
-    } catch (error) {
-      console.error('Error liking post:', error);
-      
-      // Revert the optimistic update if request fails
-      setPost(prevPost => {
-        if (!prevPost) return prevPost;
-        return {
-          ...prevPost,
-          likes: prevPost.likes - 1
-        };
-      });
-      
-      toast({
-        title: 'Error',
-        description: 'Failed to like post. Please try again.',
-        variant: 'destructive',
-      });
+    const result = await toggleLike(post._id, post.likes);
+    if (!result.ok && result.reason === 'login') {
+      toast({ title: 'Login required', description: 'Please login to like posts.', variant: 'destructive' });
+      navigate('/login');
+      return;
     }
+    if (!result.ok) {
+      toast({ title: 'Error', description: 'Failed to like post. Please try again.', variant: 'destructive' });
+      return;
+    }
+    setPost({ ...post, likes: result.likes, isLiked: result.liked });
   };
 
   // Handle share action
@@ -455,7 +406,7 @@ const ShortPostDetail = () => {
         // Direct API call as fallback
         let baseUrl = import.meta.env.VITE_API_URL;
         if (!baseUrl) {
-          baseUrl = 'http://localhost:5000/api';
+          baseUrl = 'http://localhost:5003/api';
         }
         
         // Ensure baseUrl doesn't end with a slash
@@ -516,7 +467,7 @@ const ShortPostDetail = () => {
         // Direct API call as fallback
         let baseUrl = import.meta.env.VITE_API_URL;
         if (!baseUrl) {
-          baseUrl = 'http://localhost:5000/api';
+          baseUrl = 'http://localhost:5003/api';
         }
         
         // Ensure baseUrl doesn't end with a slash
@@ -772,13 +723,14 @@ const ShortPostDetail = () => {
 
             {/* Engagement stats */}
             <div className="flex justify-between border-t border-b py-3 mb-6">
-              <Button 
-                variant="ghost" 
-                size="sm" 
+              <Button
+                variant="ghost"
+                size="sm"
                 className="flex items-center space-x-2"
+                aria-pressed={post ? isLiked(post._id, post.isLiked) : false}
                 onClick={handleLike}
               >
-                <Heart className="h-4 w-4" /> <span>{post.likes} likes</span>
+                <Heart className={`h-4 w-4 ${post && isLiked(post._id, post.isLiked) ? 'fill-red-500 text-red-500' : ''}`} /> <span>{post.likes} likes</span>
               </Button>
               <div className="flex items-center space-x-2 text-sm text-gray-500">
                 <MessageCircle className="h-4 w-4" /> <span>{post.comments} comments</span>

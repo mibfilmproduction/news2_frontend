@@ -5,9 +5,17 @@ import { format } from 'date-fns';
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { api } from "@/lib/api-client";
 import SEO from "@/components/SEO";
 import { getImageUrl, extractTextFromHTML } from "@/lib/utils";
+import { ALL_CITIES, ALL_CITIES_LABEL, ALL_STATES, ALL_STATES_LABEL, STATES, citiesForState, cityLabel, isAllCities, isAllStates, stateLabel } from "@/lib/cities";
 
 interface Article {
   _id: string;
@@ -15,6 +23,8 @@ interface Article {
   slug: string;
   summary: string;
   image: string;
+  city?: string;
+  state?: string;
   author?: string | { _id: string; name: string };
   category?: string | { _id: string; name: string; slug: string };
   createdAt: string;
@@ -24,13 +34,17 @@ const Latest = () => {
   const [articles, setArticles] = useState<Article[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
+  const [selectedState, setSelectedState] = useState<string>(ALL_STATES);
+  const [selectedCity, setSelectedCity] = useState<string>(ALL_CITIES);
 
   useEffect(() => {
     const fetchLatest = async () => {
       try {
         setLoading(true);
         setError(false);
-        const response = await api.get('/news?sort=-createdAt&limit=12&page=1');
+        const stateParam = !isAllStates(selectedState) ? `&state=${encodeURIComponent(selectedState)}` : '';
+        const cityParam = !isAllCities(selectedCity) ? `&city=${encodeURIComponent(selectedCity)}` : '';
+        const response = await api.get(`/news?sort=-createdAt&limit=12&page=1${stateParam}${cityParam}`);
         if (response.success) {
           setArticles(response.data || []);
         } else {
@@ -44,7 +58,7 @@ const Latest = () => {
       }
     };
     fetchLatest();
-  }, []);
+  }, [selectedState, selectedCity]);
 
   const getCategoryName = (category: any) => {
     if (typeof category === 'string') return 'General';
@@ -67,7 +81,33 @@ const Latest = () => {
         url="/latest"
         keywords={['latest news', 'breaking news', 'india news', 'top stories', 'mibnews']}
       />
-      <h1 className="text-3xl font-bold mb-6">Latest News</h1>
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
+        <h1 className="text-3xl font-bold">Latest News</h1>
+        <div className="flex flex-wrap items-center gap-3">
+          <Select value={selectedState} onValueChange={setSelectedState}>
+            <SelectTrigger className="w-[180px]">
+              <SelectValue placeholder={ALL_STATES_LABEL} />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={ALL_STATES}>{ALL_STATES_LABEL}</SelectItem>
+              {STATES.map((s) => (
+                <SelectItem key={s} value={s}>{s}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select value={selectedCity} onValueChange={setSelectedCity}>
+            <SelectTrigger className="w-[180px]">
+              <SelectValue placeholder={ALL_CITIES_LABEL} />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={ALL_CITIES}>{ALL_CITIES_LABEL}</SelectItem>
+              {citiesForState(selectedState).map((c) => (
+                <SelectItem key={c} value={c}>{c}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
 
       {loading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -107,7 +147,15 @@ const Latest = () => {
                 />
                 <CardContent className="p-4">
                   <div className="flex items-center justify-between mb-2">
-                    <Badge variant="outline" className="text-xs">{getCategoryName(news.category)}</Badge>
+<div className="flex items-center gap-2">
+                        <Badge variant="outline" className="text-xs">{getCategoryName(news.category)}</Badge>
+                        {!isAllStates(news.state) && (
+                          <Badge variant="secondary" className="text-xs">{stateLabel(news.state)}</Badge>
+                        )}
+                        {!isAllCities(news.city) && (
+                          <Badge variant="secondary" className="text-xs">{cityLabel(news.city)}</Badge>
+                        )}
+                    </div>
                     <span className="text-xs text-gray-500">{formatTime(news.createdAt)}</span>
                   </div>
                   <h3 className="font-bold text-lg line-clamp-2">{extractTextFromHTML(news.title)}</h3>

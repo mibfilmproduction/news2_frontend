@@ -327,7 +327,9 @@ const Careers: React.FC = () => {
                     </TableHeader>
                     <TableBody>
                       {applications.map((application) => {
-                        const job = jobs.find(j => j._id === application.jobId);
+                        const jobRef = (application as any).job;
+                        const jobId = typeof jobRef === 'object' ? jobRef?._id : ((application as any).jobId || jobRef);
+                        const job = jobs.find(j => j._id === jobId);
                         return (
                           <TableRow key={application._id}>
                             <TableCell className="font-medium">{application.fullName}</TableCell>

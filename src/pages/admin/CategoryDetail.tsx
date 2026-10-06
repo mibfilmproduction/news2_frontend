@@ -71,6 +71,8 @@ const CategoryDetail = () => {
   }, [fetchArticles]);
 
   const handleDelete = async (id: string) => {
+    const target = articles.find((a) => a._id === id);
+    if (!window.confirm(`Delete article "${target?.title || id}"? This cannot be undone.`)) return;
     setDeletingId(id);
     try {
       const res = await newsApi.deleteArticle(id);
@@ -79,7 +81,7 @@ const CategoryDetail = () => {
           title: "Article deleted",
           description: "The article has been deleted.",
         });
-        setArticles(articles.filter(article => article._id !== id));
+        setArticles((prev) => prev.filter(article => article._id !== id));
       } else {
         toast({
           title: "Delete failed",
@@ -151,7 +153,7 @@ const CategoryDetail = () => {
           <Spinner size="lg" />
         </div>
       ) : (
-        <div className="border rounded-md">
+        <div className="border rounded-md overflow-x-auto">
           <Table>
             <TableHeader>
               <TableRow>
@@ -174,6 +176,12 @@ const CategoryDetail = () => {
                     <TableCell>
                       {article.status === "published" ? (
                         <Badge className="bg-green-500">Published</Badge>
+                      ) : article.status === "scheduled" ? (
+                        <Badge variant="outline" className="text-blue-600 border-blue-600">Scheduled</Badge>
+                      ) : article.status === "pending_review" ? (
+                        <Badge variant="outline" className="text-purple-600 border-purple-600">In Review</Badge>
+                      ) : article.status === "archived" ? (
+                        <Badge variant="secondary">Archived</Badge>
                       ) : (
                         <Badge variant="outline" className="text-amber-600 border-amber-600">Draft</Badge>
                       )}
@@ -184,7 +192,7 @@ const CategoryDetail = () => {
                     <TableCell>{(article.viewCount || 0).toLocaleString()}</TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-2">
-                        <Link to="/admin/articles">
+                        <Link to={`/admin/articles/${article._id}/edit`}>
                           <Button size="sm" variant="outline">
                             <Pencil className="h-4 w-4" />
                           </Button>

@@ -127,8 +127,8 @@ const ShortPosts = () => {
       
       if (response.success) {
         setShortPosts(response.data);
-        // Use the count directly from response if available, otherwise calculate
-        const count = response.count || response.data.length;
+        // Backend sends the authoritative total in pagination.total
+        const count = response.pagination?.total ?? response.total ?? response.data.length;
         setTotalShortPosts(count);
         const pages = response.pagination?.pages || 1;
         setTotalPages(pages);
@@ -158,35 +158,74 @@ const ShortPosts = () => {
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
-    setCurrentPage(1);
-    fetchShortPosts();
-  };
-
-  // Handle image selection
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      setSelectedImage(e.target.files[0]);
+    // Page reset triggers the [currentPage] effect; if already on page 1
+    // fetch explicitly (avoids double-fetch race with stale page).
+    if (currentPage === 1) {
+      fetchShortPosts();
+    } else {
+      setCurrentPage(1);
     }
   };
 
-  // Open dialog for new short post
+  // Handle image selection (5MB client guard — matches "Max 5MB" hint)
+  const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      toast({ title: "Invalid file", description: "Please select an image file.", variant: "destructive" });
+      e.target.value = '';
+      return;
+    }
+    if (file.size > MAX_IMAGE_BYTES) {
+      toast({ title: "File too large", description: "Image must be under 5MB.", variant: "destructive" });
+      e.target.value = '';
+      return;
+    }
+    setSelectedImage(file);
+  };
+
+  // Open dialog for new short post (restores unsaved draft after refresh)
   const openNewShortPostDialog = () => {
     setEditingShortPost(null);
+    let restored: any = null;
+    try {
+      const raw = localStorage.getItem('draft:shortpost:new');
+      if (raw) restored = JSON.parse(raw);
+    } catch {}
     form.reset({
-      content: "",
-      tags: "",
-      isActive: true,
+      content: restored?.content || "",
+      tags: restored?.tags || "",
+      isActive: restored?.isActive ?? true,
     });
+    if (restored && (restored.content || restored.tags)) {
+      toast({ title: "Draft restored", description: "Your unsaved post details were restored." });
+    }
     setSelectedImage(null);
     setIsDialogOpen(true);
   };
+
+  // Persist new-post text state so refresh doesn't wipe it (files excluded)
+  const watchedShortPostValues = form.watch();
+  useEffect(() => {
+    if (!isDialogOpen || editingShortPost) return;
+    const t = setTimeout(() => {
+      try {
+        const { content, tags, isActive } = watchedShortPostValues as any;
+        if (content || tags) {
+          localStorage.setItem('draft:shortpost:new', JSON.stringify({ content, tags, isActive }));
+        }
+      } catch {}
+    }, 600);
+    return () => clearTimeout(t);
+  }, [watchedShortPostValues, isDialogOpen, editingShortPost]);
 
   // Open dialog for editing short post
   const openEditShortPostDialog = (shortPost: ShortPost) => {
     setEditingShortPost(shortPost);
     form.reset({
       content: shortPost.content,
-      tags: shortPost.tags.join(", "),
+      tags: (shortPost.tags || []).join(", "),
       isActive: shortPost.isActive,
     });
     setSelectedImage(null);
@@ -271,10 +310,14 @@ const ShortPosts = () => {
       if (response.success) {
         toast({
           title: "Success",
-          description: editingShortPost 
-            ? "Short post updated successfully" 
+          description: editingShortPost
+            ? "Short post updated successfully"
             : "Short post created successfully",
         });
+
+        if (!editingShortPost) {
+          try { localStorage.removeItem('draft:shortpost:new'); } catch {}
+        }
         
         // Close dialog and reset form
         setIsDialogOpen(false);
@@ -367,7 +410,7 @@ const ShortPosts = () => {
         </div>
       </div>
       
-      <div className="border rounded-md">
+      <div className="border rounded-md overflow-x-auto">
         <Table>
           <TableHeader>
             <TableRow>
@@ -554,13 +597,13 @@ const ShortPosts = () => {
                       />
                     </FormControl>
                     <FormDescription>
-                      Max 280 characters.
+                      Max 280 characters ({(field.value || '').length}/280).
                     </FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}
               />
-              
+
               <FormField
                 control={form.control}
                 name="tags"

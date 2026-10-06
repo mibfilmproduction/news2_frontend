@@ -62,15 +62,18 @@ import { Loader2, Save, Eye, Calendar, Clock, Tag, Image as ImageIcon, AlertTria
 import { useToast } from "@/hooks/use-toast";
 import { api } from "@/lib/api-client";
 import { getImageUrl } from "@/lib/utils";
+import { ALL_CITIES, ALL_CITIES_LABEL, ALL_STATES, ALL_STATES_LABEL, STATES, citiesForState } from "@/lib/cities";
 import { cn } from "@/lib/utils";
 
 const articleFormSchema = z.object({
-  title: z.string().min(5, "Title must be at least 5 characters."),
+  title: z.string().min(5, "Title must be at least 5 characters.").max(200, "Title cannot exceed 200 characters."),
   content: z.string().min(20, "Content must be at least 20 characters."),
-  summary: z.string().min(10, "Summary must be at least 10 characters."),
+  summary: z.string().min(10, "Summary must be at least 10 characters.").max(500, "Summary cannot exceed 500 characters."),
   category: z.string({ required_error: "Please select a category." }),
   tags: z.array(z.string()).optional(),
   articleLanguage: z.enum(["hindi", "english"], { required_error: "Please select a language." }),
+  state: z.string().optional().default("all"),
+  city: z.string().optional().default("all"),
   slug: z.string().optional(),
   status: z.enum(["published", "draft", "scheduled", "pending_review"], { required_error: "Please select a status." }),
   scheduledAt: z.string().optional(),
@@ -103,6 +106,8 @@ type Article = {
   author: { _id: string; name: string; avatar?: string };
   tags: string[];
   articleLanguage: "hindi" | "english";
+  state?: string;
+  city?: string;
   metaTitle?: string;
   metaDescription?: string;
   focusKeyword?: string;
@@ -151,6 +156,8 @@ const initialFormValues: ArticleFormData = {
   category: "",
   tags: [],
   articleLanguage: "hindi",
+  state: "all",
+  city: "all",
   slug: "",
   status: "draft",
   scheduledAt: "",
@@ -185,6 +192,8 @@ export function ArticleEditor() {
   const [previewImage, setPreviewImage] = useState<string>("");
   const [showMediaLibrary, setShowMediaLibrary] = useState(false);
   const [activeTab, setActiveTab] = useState("editor");
+  const [notifyEmail, setNotifyEmail] = useState(true);
+  const [sendPush, setSendPush] = useState(false);
   const autosaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const [wordCount, setWordCount] = useState(0);
@@ -197,6 +206,37 @@ export function ArticleEditor() {
   });
   const watchedValues = useWatch({ control: form.control });
   const watchedContent = form.watch("content");
+
+  // Local draft for NEW articles: survives refresh until first successful save.
+  // (Files can't be restored by browsers; text/selects/switches are.)
+  const NEW_ARTICLE_DRAFT_KEY = 'draft:article:new';
+  const [draftRestored, setDraftRestored] = useState(false);
+  useEffect(() => {
+    if (isEditing || draftRestored) return;
+    try {
+      const raw = localStorage.getItem(NEW_ARTICLE_DRAFT_KEY);
+      if (raw) {
+        const draft = JSON.parse(raw);
+        if (draft && typeof draft === 'object' && (draft.title || draft.content || draft.summary)) {
+          form.reset({ ...initialFormValues, ...draft });
+          toast({ title: 'Draft restored', description: 'Your unsaved changes from before the refresh were restored.' });
+        }
+      }
+    } catch {}
+    setDraftRestored(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isEditing]);
+  useEffect(() => {
+    if (isEditing) return;
+    const t = setTimeout(() => {
+      try {
+        const v = watchedValues as Record<string, any>;
+        const meaningful = (v.title || v.content || v.summary || v.slug || v.metaTitle || v.metaDescription);
+        if (meaningful) localStorage.setItem(NEW_ARTICLE_DRAFT_KEY, JSON.stringify(v));
+      } catch {}
+    }, 800);
+    return () => clearTimeout(t);
+  }, [watchedValues, isEditing]);
 
   const fetchArticle = useCallback(async () => {
     if (!articleId) return;
@@ -214,6 +254,8 @@ export function ArticleEditor() {
           category: articleData.category?._id || "",
           tags: articleData.tags || [],
           articleLanguage: articleData.articleLanguage || "hindi",
+          state: articleData.state || "all",
+          city: articleData.city || "all",
           slug: articleData.slug || "",
           status: articleData.status,
           scheduledAt: articleData.scheduledAt ? new Date(articleData.scheduledAt).toISOString().slice(0, 16) : "",
@@ -310,6 +352,8 @@ export function ArticleEditor() {
       formData.append("summary", values.summary);
       formData.append("category", values.category);
       formData.append("articleLanguage", values.articleLanguage);
+      formData.append("state", values.state || "all");
+      formData.append("city", values.city || "all");
       formData.append("status", "draft");
       formData.append("isBreaking", String(values.isBreaking));
       formData.append("isFeatured", String(values.isFeatured));
@@ -353,6 +397,11 @@ export function ArticleEditor() {
   }, [watchedValues, autosave, isEditing, form.formState.isDirty]);
 
   const onSubmit = async (values: ArticleFormData, publishAction: "save" | "publish" | "schedule" = "save") => {
+    if (publishAction === "schedule" && !values.scheduledAt) {
+      toast({ title: "Schedule date required", description: "Please pick a date & time to schedule publishing.", variant: "destructive" });
+      setActiveTab("editor");
+      return;
+    }
     setIsSaving(true);
     try {
       const formData = new FormData();
@@ -362,6 +411,8 @@ export function ArticleEditor() {
       formData.append("summary", values.summary);
       formData.append("category", values.category);
       formData.append("articleLanguage", values.articleLanguage);
+      formData.append("state", values.state || "all");
+      formData.append("city", values.city || "all");
       formData.append("isBreaking", String(values.isBreaking));
       formData.append("isFeatured", String(values.isFeatured));
       formData.append("allowComments", String(values.allowComments));
@@ -402,6 +453,22 @@ export function ArticleEditor() {
       }
       
       if (response.success) {
+        // Clear the local new-article draft on first successful save
+        try { localStorage.removeItem(NEW_ARTICLE_DRAFT_KEY); } catch {}
+        const saved: any = (response.data as any) || {};
+        // Push-notification switch now actually creates an in-app notification
+        // (bell dropdown + /notifications page). Backend also auto-creates one
+        // for breaking/published articles, so this is best-effort only.
+        if (sendPush && (status === 'published' || values.isBreaking)) {
+          try {
+            await api.post('/notifications', {
+              title: values.isBreaking ? 'Breaking News' : 'New Article',
+              message: values.title,
+              type: values.isBreaking ? 'breaking' : 'article',
+              link: saved.slug ? `/article/${saved.slug}` : (saved._id ? `/article/${saved._id}` : ''),
+            });
+          } catch {}
+        }
         toast({ 
           title: publishAction === "publish" ? "Published!" : publishAction === "schedule" ? "Scheduled!" : "Saved!", 
           description: `Article ${publishAction === "publish" ? "published" : publishAction === "schedule" ? "scheduled" : "saved"} successfully.` 
@@ -427,8 +494,11 @@ export function ArticleEditor() {
     });
     void form.handleSubmit(
       (values) => onSubmit({ ...values, ...overrides }, action),
-      () => {
-        setActiveTab("editor");
+      (errors) => {
+        // Jump to the tab that actually contains the failing field
+        const seoKeys = ["metaTitle", "metaDescription", "focusKeyword", "canonicalUrl", "ogTitle", "ogDescription", "ogImage", "twitterCard", "schemaType"];
+        const failed = Object.keys(errors || {});
+        setActiveTab(failed.some((k) => seoKeys.includes(k)) ? "seo" : "editor");
         toast({ title: "Complete required fields", description: "Please correct the highlighted fields before saving.", variant: "destructive" });
       },
     )();
@@ -474,7 +544,7 @@ export function ArticleEditor() {
 
   return (
     <Form {...form}>
-    <div className="min-h-screen bg-gray-50">
+    <div className="bg-gray-50 pb-10">
       {/* Top Bar */}
       <header className="sticky top-0 z-20 border-b border-gray-200 bg-white">
         <div className="container mx-auto px-4 py-3 flex flex-wrap items-center justify-between gap-3">
@@ -713,6 +783,67 @@ export function ArticleEditor() {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <FormField
                         control={form.control}
+                        name="state"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>State</FormLabel>
+                            <Select
+                              onValueChange={(v) => {
+                                field.onChange(v);
+                                // Reset city when state changes (city list is state-wise)
+                                form.setValue("city", ALL_CITIES);
+                              }}
+                              value={field.value || ALL_STATES}
+                            >
+                              <FormControl>
+                                <SelectTrigger className="w-full">
+                                  <SelectValue placeholder="Select state" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                <SelectItem value={ALL_STATES}>{ALL_STATES_LABEL} (all states)</SelectItem>
+                                {STATES.map((s) => (
+                                  <SelectItem key={s} value={s}>{s}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="city"
+                        render={({ field }) => {
+                          const stateVal = form.watch("state") || ALL_STATES;
+                          const options = citiesForState(stateVal);
+                          return (
+                            <FormItem>
+                              <FormLabel>City</FormLabel>
+                              <Select onValueChange={field.onChange} value={field.value || ALL_CITIES}>
+                                <FormControl>
+                                  <SelectTrigger className="w-full">
+                                    <SelectValue placeholder="Select city" />
+                                  </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                  <SelectItem value={ALL_CITIES}>{ALL_CITIES_LABEL} (visible everywhere)</SelectItem>
+                                  {options.map((c) => (
+                                    <SelectItem key={c} value={c}>{c}</SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                              <p className="text-xs text-muted-foreground">“{ALL_CITIES_LABEL}” articles appear in every city filter.</p>
+                              <FormMessage />
+                            </FormItem>
+                          );
+                        }}
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <FormField
+                        control={form.control}
                         name="tags"
                         render={({ field }) => (
                           <FormItem>
@@ -861,14 +992,14 @@ export function ArticleEditor() {
                     <Label className="font-medium">Email Subscribers</Label>
                     <p className="text-sm text-muted-foreground">Notify email subscribers</p>
                   </div>
-                  <Switch defaultChecked />
+                  <Switch checked={notifyEmail} onCheckedChange={setNotifyEmail} />
                 </div>
                 <div className="flex items-center justify-between">
                   <div>
                     <Label className="font-medium">Push Notification</Label>
                     <p className="text-sm text-muted-foreground">Send push notification</p>
                   </div>
-                  <Switch defaultChecked={false} />
+                  <Switch checked={sendPush} onCheckedChange={setSendPush} />
                 </div>
                 <div className="flex items-center justify-between">
                   <div>

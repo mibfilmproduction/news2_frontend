@@ -63,7 +63,7 @@ const AdvertisementForm: React.FC<AdvertisementFormProps> = ({
   }, [navigate]);
   
   // Initialize form state with Cloudinary support
-  const [formData, setFormData] = useState<Omit<Advertisement, '_id' | 'createdAt' | 'updatedAt'> & { _id?: string; publicId?: string }>({
+  const [formData, setFormData] = useState<Omit<Advertisement, '_id' | 'createdAt' | 'updatedAt'> & { _id?: string; publicId?: string; language?: string }>({
     title: "",
     imageUrl: "",
     targetUrl: "",
@@ -72,10 +72,44 @@ const AdvertisementForm: React.FC<AdvertisementFormProps> = ({
     startDate: dayjs().format("YYYY-MM-DD"),
     endDate: dayjs().add(30, "day").format("YYYY-MM-DD"),
     isActive: true,
+    language: "hindi",
     impressions: 0,
     clicks: 0,
-    publicId: ""
+    publicId: "",
+    sizeMode: "preset",
+    customWidth: null as any,
+    customHeight: null as any,
   });
+
+  // Persist new-ad text state so refresh/close doesn't wipe it
+  useEffect(() => {
+    if (advertisement) return;
+    const t = setTimeout(() => {
+      try {
+        const { title, targetUrl, position, displayOnPages, startDate, endDate, isActive, language } = formData as any;
+        if (title || targetUrl) {
+          localStorage.setItem('draft:advertisement:new', JSON.stringify({ title, targetUrl, position, displayOnPages, startDate, endDate, isActive, language }));
+        }
+      } catch {}
+    }, 600);
+    return () => clearTimeout(t);
+  }, [formData, advertisement]);
+
+  // Restore draft for new ads
+  useEffect(() => {
+    if (advertisement) return;
+    try {
+      const raw = localStorage.getItem('draft:advertisement:new');
+      if (raw) {
+        const d = JSON.parse(raw);
+        if (d && (d.title || d.targetUrl)) {
+          setFormData((prev) => ({ ...prev, ...d }));
+          toast.success('Unsaved ad draft restored');
+        }
+      }
+    } catch {}
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   
   // Populate form with existing data in edit mode
   useEffect(() => {
@@ -105,7 +139,7 @@ const AdvertisementForm: React.FC<AdvertisementFormProps> = ({
       } else if (error.response?.status === 403) {
         toast.error('You do not have permission to perform this action');
       } else {
-        toast.error("Failed to create advertisement");
+        toast.error(error.response?.data?.message || error.message || "Failed to create advertisement");
         console.error("Create error:", error);
       }
     }
@@ -127,7 +161,7 @@ const AdvertisementForm: React.FC<AdvertisementFormProps> = ({
       } else if (error.response?.status === 403) {
         toast.error('You do not have permission to perform this action');
       } else {
-        toast.error("Failed to update advertisement");
+        toast.error(error.response?.data?.message || error.message || "Failed to update advertisement");
         console.error("Update error:", error);
       }
     }
@@ -177,21 +211,29 @@ const AdvertisementForm: React.FC<AdvertisementFormProps> = ({
   // Handle form submission
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     try {
       // Validate form
       if (!formData.title || !formData.imageUrl || !formData.targetUrl) {
         toast.error("Please fill all required fields");
         return;
       }
-      
+      if (!formData.displayOnPages || formData.displayOnPages.length === 0) {
+        toast.error("Please select at least one display page");
+        return;
+      }
+      if (dayjs(formData.endDate).isBefore(dayjs(formData.startDate), 'day')) {
+        toast.error("End date must be after start date");
+        return;
+      }
+
       // Format dates
       const submissionData = {
         ...formData,
         startDate: dayjs(formData.startDate).toISOString(),
         endDate: dayjs(formData.endDate).toISOString()
       };
-      
+
       if (isEditMode && advertisement?._id) {
         // Update existing advertisement
         // Destructure only the properties we know exist in our type
@@ -200,6 +242,7 @@ const AdvertisementForm: React.FC<AdvertisementFormProps> = ({
       } else {
         // Create new advertisement
         const { _id, impressions, clicks, ...createData } = submissionData;
+        try { localStorage.removeItem('draft:advertisement:new'); } catch {}
         createMutation.mutate(createData);
       }
     } catch (error) {
@@ -259,7 +302,82 @@ const AdvertisementForm: React.FC<AdvertisementFormProps> = ({
               <option value="breaking-news">Breaking News</option>
               <option value="category-header">Category Header</option>
               <option value="category-square">Category Square (200x200)</option>
+              <option value="home-hero-side">Home Hero Side - Top Right (same as card)</option>
             </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Language
+            </label>
+            <select
+              name="language"
+              value={(formData as any).language || 'hindi'}
+              onChange={handleInputChange}
+              className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
+            >
+              <option value="hindi">Hindi</option>
+              <option value="english">English</option>
+            </select>
+          </div>
+
+          <div className="rounded-md border border-gray-200 bg-gray-50 p-3">
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Ad Size
+            </label>
+            <div className="flex gap-4 text-sm">
+              <label className="flex items-center gap-1.5">
+                <input
+                  type="radio"
+                  name="sizeMode"
+                  value="preset"
+                  checked={(formData as any).sizeMode !== 'custom'}
+                  onChange={() => setFormData(prev => ({ ...prev, sizeMode: 'preset' as any, customWidth: null as any, customHeight: null as any }))}
+                />
+                Preset (auto per position)
+              </label>
+              <label className="flex items-center gap-1.5">
+                <input
+                  type="radio"
+                  name="sizeMode"
+                  value="custom"
+                  checked={(formData as any).sizeMode === 'custom'}
+                  onChange={() => setFormData(prev => ({ ...prev, sizeMode: 'custom' as any }))}
+                />
+                Custom (any W x H)
+              </label>
+            </div>
+            {(formData as any).sizeMode === 'custom' && (
+              <div className="mt-3 grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-medium text-gray-600">Width (px)</label>
+                  <input
+                    type="number"
+                    min={1}
+                    max={4000}
+                    placeholder="e.g. 400"
+                    value={(formData as any).customWidth ?? ''}
+                    onChange={(e) => setFormData(prev => ({ ...prev, customWidth: (e.target.value ? Number(e.target.value) : null) as any }))}
+                    className="mt-1 w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-600">Height (px)</label>
+                  <input
+                    type="number"
+                    min={1}
+                    max={4000}
+                    placeholder="e.g. 180"
+                    value={(formData as any).customHeight ?? ''}
+                    onChange={(e) => setFormData(prev => ({ ...prev, customHeight: (e.target.value ? Number(e.target.value) : null) as any }))}
+                    className="mt-1 w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
+                  />
+                </div>
+                <p className="col-span-2 text-xs text-gray-500">
+                  No forced crop - exact W:H ratio on display. Quick: 970x90, 728x90, 300x600, 300x250, 200x200, 400x180.
+                </p>
+              </div>
+            )}
           </div>
           
           <div>
@@ -374,19 +492,27 @@ const AdvertisementForm: React.FC<AdvertisementFormProps> = ({
               <ImageUploader
                 onUploadComplete={handleImageUpload}
                 position={formData.position}
+                customSize={{
+                  width: (formData as any).customWidth ?? undefined,
+                  height: (formData as any).customHeight ?? undefined,
+                  sizeMode: (formData as any).sizeMode,
+                }}
               />
             )}
             
             <div className="mt-1">
               <p className="text-xs text-gray-500">
-                Recommended dimensions (auto-resized on upload):
-                {formData.position === 'header' && ' 970x90px (Leaderboard)'}
-                {formData.position === 'sidebar' && ' 300x600px (Half Page)'}
-                {formData.position === 'in-article' && ' 970x90px (Strip Banner)'}
-                {formData.position === 'footer' && ' 728x90px (Leaderboard)'}
-                {formData.position === 'breaking-news' && ' 300x250px (Medium Rectangle)'}
-                {formData.position === 'category-header' && ' 728x90px (Leaderboard)'}
-                {formData.position === 'category-square' && ' 200x200px (Square)'}
+                {(formData as any).sizeMode === 'custom' && (formData as any).customWidth && (formData as any).customHeight
+                  ? `Custom size ${(formData as any).customWidth}x${(formData as any).customHeight}px (no forced crop, exact ratio on display)`
+                  : 'Recommended dimensions (auto-resized on upload):'}
+                {(formData as any).sizeMode !== 'custom' && formData.position === 'header' && ' 970x90px (Leaderboard)'}
+                {(formData as any).sizeMode !== 'custom' && formData.position === 'sidebar' && ' 300x600px (Half Page)'}
+                {(formData as any).sizeMode !== 'custom' && formData.position === 'in-article' && ' 970x90px (Strip Banner)'}
+                {(formData as any).sizeMode !== 'custom' && formData.position === 'footer' && ' 728x90px (Leaderboard)'}
+                {(formData as any).sizeMode !== 'custom' && formData.position === 'breaking-news' && ' 300x250px (Medium Rectangle)'}
+                {(formData as any).sizeMode !== 'custom' && formData.position === 'category-header' && ' 728x90px (Leaderboard)'}
+                {(formData as any).sizeMode !== 'custom' && formData.position === 'category-square' && ' 200x200px (Square)'}
+                {(formData as any).sizeMode !== 'custom' && (formData.position as string) === 'home-hero-side' && ' 400x180px (same as related card)'}
               </p>
             </div>
           </div>

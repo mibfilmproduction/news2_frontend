@@ -180,12 +180,42 @@ const AdminLiveTvPage: React.FC = () => {
     setCurrentChannel(null);
   };
 
-  // Open form for creating a new channel
+  // Open form for creating a new channel (restores unsaved draft after refresh)
   const handleAddNew = () => {
     resetForm();
+    try {
+      const raw = localStorage.getItem('draft:livetv:new');
+      if (raw) {
+        const d = JSON.parse(raw);
+        if (d && (d.title || d.streamUrl || d.description)) {
+          if (d.title) setTitle(d.title);
+          if (d.description) setDescription(d.description);
+          if (d.streamUrl) setStreamUrl(d.streamUrl);
+          if (d.category) setCategory(d.category);
+          if (d.language) setLanguage(d.language);
+          if (typeof d.isLive === 'boolean') setIsLive(d.isLive);
+          if (typeof d.isFeatured === 'boolean') setIsFeatured(d.isFeatured);
+          if (typeof d.order === 'number') setOrder(d.order);
+          toast({ title: 'Draft restored', description: 'Your unsaved channel details were restored.' });
+        }
+      }
+    } catch {}
     setIsEditing(false);
     setIsFormOpen(true);
   };
+
+  // Persist new-channel text state so refresh doesn't wipe it (files excluded)
+  useEffect(() => {
+    if (!isFormOpen || isEditing) return;
+    const t = setTimeout(() => {
+      try {
+        if (title || streamUrl || description) {
+          localStorage.setItem('draft:livetv:new', JSON.stringify({ title, description, streamUrl, category, language, isLive, isFeatured, order }));
+        }
+      } catch {}
+    }, 600);
+    return () => clearTimeout(t);
+  }, [title, description, streamUrl, category, language, isLive, isFeatured, order, isFormOpen, isEditing]);
 
   // Open form for editing a channel
   const handleEdit = (channel: LiveTvChannel) => {
@@ -199,6 +229,9 @@ const AdminLiveTvPage: React.FC = () => {
     setIsFeatured(channel.isFeatured);
     setOrder(channel.order || 0);
     setThumbnailPreview(channel.thumbnailUrl || '');
+    // Clear any stale file picked while editing another channel
+    setThumbnailFile(null);
+    if (fileInputRef.current) fileInputRef.current.value = '';
 
     setIsEditing(true);
     setIsFormOpen(true);
@@ -241,11 +274,20 @@ const AdminLiveTvPage: React.FC = () => {
       return;
     }
 
-    // Check valid stream URL format
-    if (!/^https?:\/\/.+\.(m3u8|mp4|webm|mpd|mp3)($|\?)/.test(streamUrl)) {
+    // Check valid stream URL format (backend accepts any http/https URL)
+    if (!/^https?:\/\/.+/.test(streamUrl.trim())) {
       toast({
         title: 'Validation Error',
-        description: 'Stream URL must be a valid streaming URL (ends with m3u8, mp4, webm, mpd or mp3).',
+        description: 'Stream URL must be a valid http(s) URL.',
+        variant: 'destructive'
+      });
+      return;
+    }
+
+    if (!description.trim()) {
+      toast({
+        title: 'Validation Error',
+        description: 'Description is required.',
         variant: 'destructive'
       });
       return;
@@ -263,7 +305,7 @@ const AdminLiveTvPage: React.FC = () => {
         isLive,
         isFeatured,
         order,
-        thumbnailUrl: thumbnailPreview || `https://placehold.co/300x200/333/white?text=${encodeURIComponent(title.substring(0, 15))}`,
+        thumbnailUrl: thumbnailPreview || '',
       };
 
       let result;
@@ -278,6 +320,7 @@ const AdminLiveTvPage: React.FC = () => {
       } else {
         // Create new channel
         result = await createLiveTvChannel(channelData, thumbnailFile);
+        try { localStorage.removeItem('draft:livetv:new'); } catch {}
         toast({
           title: 'Success',
           description: 'Channel created successfully.',
@@ -333,12 +376,13 @@ const AdminLiveTvPage: React.FC = () => {
   // Handle toggling featured status
   const handleToggleFeatured = async (channel: LiveTvChannel) => {
     try {
-      await toggleChannelFeatured(channel._id);
+      const result = await toggleChannelFeatured(channel._id);
 
-      // Update local state
-      setChannels(channels.map(c =>
+      // Prefer server value, fall back to optimistic flip
+      const next = result && typeof result.isFeatured === 'boolean' ? result.isFeatured : !channel.isFeatured;
+      setChannels((prev) => prev.map(c =>
         c._id === channel._id
-          ? { ...c, isFeatured: !c.isFeatured }
+          ? { ...c, isFeatured: next }
           : c
       ));
 
@@ -435,6 +479,7 @@ const AdminLiveTvPage: React.FC = () => {
             </div>
           ) : (
             <>
+              <div className="overflow-x-auto rounded-md border">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -511,6 +556,7 @@ const AdminLiveTvPage: React.FC = () => {
                   ))}
                 </TableBody>
               </Table>
+              </div>
 
               {/* Pagination */}
               {totalPages > 1 && (

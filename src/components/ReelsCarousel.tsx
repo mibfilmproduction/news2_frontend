@@ -1,12 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { api } from '@/lib/api-client';
+import { useLikes } from '@/hooks/useLikes';
 import { getImageUrl } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
 import { Skeleton } from './ui/skeleton';
-import { Play, Pause, Volume2, VolumeX, MessageSquare, Heart, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Play, Pause, Volume2, VolumeX, Heart, ChevronLeft, ChevronRight } from 'lucide-react';
 import {
   Carousel,
   CarouselContent,
@@ -24,6 +25,7 @@ interface Reel {
   duration: number;
   views: number;
   likes: number;
+  isLiked?: boolean;
   comments: number;
   author: {
     _id: string;
@@ -63,6 +65,13 @@ const ReelsCarousel: React.FC<ReelsCarouselProps> = ({
   
   const videoRefs = useRef<{ [key: string]: HTMLVideoElement }>({});
   const { toast } = useToast();
+  const navigate = useNavigate();
+  const { isLiked, toggleLike, seedFromServer } = useLikes('reels');
+
+  // Sync server liked flags
+  useEffect(() => {
+    if (reels.length) seedFromServer(reels);
+  }, [reels, seedFromServer]);
   
   // Track carousel index changes
   useEffect(() => {
@@ -160,26 +169,21 @@ const ReelsCarousel: React.FC<ReelsCarouselProps> = ({
     }
   };
   
-  // Handle like functionality
+  // Handle like toggle — one user one like, red fill when liked
   const handleLike = async (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    try {
-      const response = await api.post(`/reels/${id}/like`);
-      
-      if (response.success) {
-        // Update likes count in the state
-        setReels(reels.map(reel => 
-          reel._id === id ? { ...reel, likes: reel.likes + 1 } : reel
-        ));
-      }
-    } catch (err) {
-      console.error('Error liking reel:', err);
-      toast({
-        title: "Error",
-        description: "Failed to like reel. Please try again.",
-        variant: "destructive",
-      });
+    const reel = reels.find((r) => r._id === id);
+    const result = await toggleLike(id, reel?.likes ?? 0);
+    if (!result.ok && result.reason === 'login') {
+      toast({ title: 'Login required', description: 'Please login to like reels.', variant: 'destructive' });
+      navigate('/login');
+      return;
     }
+    if (!result.ok) {
+      toast({ title: 'Error', description: 'Failed to like reel. Please try again.', variant: 'destructive' });
+      return;
+    }
+    setReels((prev) => prev.map((r) => (r._id === id ? { ...r, likes: result.likes, isLiked: result.liked } : r)));
   };
 
   // Toggle mute status
@@ -230,23 +234,16 @@ const ReelsCarousel: React.FC<ReelsCarouselProps> = ({
 
   if (loading) {
     return (
-      <div className="space-y-4">
-        <div className="flex items-center justify-between mb-4">
+      <div className="space-y-1">
+        <div className="flex items-center justify-between mb-1">
           <h2 className="text-2xl font-bold">{featured ? 'Featured Reels' : 'Video Reels'}</h2>
         </div>
-        
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          {[...Array(limit)].map((_, index) => (
-            <div key={index} className="border rounded-lg overflow-hidden">
-              <div className="aspect-video bg-gray-200 animate-pulse" />
-              <div className="p-4 space-y-2">
-                <div className="h-5 w-3/4 bg-gray-200 animate-pulse rounded" />
-                <div className="h-4 w-1/2 bg-gray-200 animate-pulse rounded" />
-                <div className="flex justify-between pt-2">
-                  <div className="h-6 w-16 bg-gray-200 animate-pulse rounded" />
-                  <div className="h-6 w-16 bg-gray-200 animate-pulse rounded" />
-                </div>
-              </div>
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
+          {[...Array(Math.min(limit, 6))].map((_, index) => (
+            <div key={index} className="rounded-lg overflow-hidden bg-black">
+              <div className="h-14 bg-red-700 animate-pulse" />
+              <div className="h-32 bg-gray-800 animate-pulse" />
+              <div className="h-12 bg-black animate-pulse" />
             </div>
           ))}
         </div>
@@ -264,8 +261,8 @@ const ReelsCarousel: React.FC<ReelsCarouselProps> = ({
   }
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between mb-4">
+    <div className="space-y-1">
+      <div className="flex items-center justify-between mb-1">
         <h2 className="text-2xl font-bold">{featured ? 'Featured Reels' : 'Video Reels'}</h2>
         
         {showViewMore && (
@@ -293,20 +290,21 @@ const ReelsCarousel: React.FC<ReelsCarouselProps> = ({
         >
           <CarouselContent className="-ml-2 md:-ml-4">
             {reels.map((reel) => (
-              <CarouselItem 
-                key={reel._id} 
-                className="pl-2 md:pl-4 basis-full sm:basis-1/2 md:basis-1/3 lg:basis-1/4 xl:basis-1/4"
+              <CarouselItem
+                key={reel._id}
+                className="pl-2 md:pl-3 basis-1/2 sm:basis-1/3 md:basis-1/4 lg:basis-1/5 xl:basis-1/6"
               >
-                <div className="border rounded-lg overflow-hidden h-full flex flex-col hover:shadow-md transition-shadow duration-300 bg-white">
-                  <div 
-                    className="relative aspect-[9/16] cursor-pointer"
+                {/* Compact card: FULL image with all text overlaid on top */}
+                <div className="rounded-lg overflow-hidden h-full flex flex-col bg-black border border-black hover:shadow-md transition-shadow duration-300">
+                  <div
+                    className="relative aspect-[9/14] cursor-pointer overflow-hidden"
                     onClick={(e) => togglePlayback(reel._id, e)}
                   >
                     {/* Thumbnail with play button overlay */}
                     <img
                       src={reel.thumbnail ? getImageUrl(reel.thumbnail) : `https://via.placeholder.com/640x360?text=Video`}
                       alt={reel.title}
-                      className="w-full h-full object-cover"
+                      className="absolute inset-0 w-full h-full object-cover bg-gray-900"
                     />
                     
                     {/* Video element (hidden until played) */}
@@ -322,88 +320,58 @@ const ReelsCarousel: React.FC<ReelsCarouselProps> = ({
                       className={`absolute inset-0 w-full h-full object-cover ${activeReel === reel._id ? '' : 'hidden'}`}
                     />
                     
-                    {/* Play/pause overlay */}
-                    <div className="absolute inset-0 flex items-center justify-center bg-black/30 hover:bg-black/40 transition-all">
+                    {/* Center play button (red circle like reference) + bottom title overlay */}
+                    <div className="absolute inset-0 z-[2] flex items-center justify-center pointer-events-none">
                       {activeReel === reel._id && !videoRefs.current[reel._id]?.paused ? (
-                        <div className="rounded-full bg-white/80 p-3">
-                          <Pause className="h-6 w-6 text-primary" />
+                        <div className="rounded-full bg-red-600 p-2 shadow-lg">
+                          <Pause className="h-4 w-4 text-white fill-white" />
                         </div>
                       ) : (
-                        <div className="rounded-full bg-white/80 p-3">
-                          <Play className="h-6 w-6 text-primary" />
+                        <div className="rounded-full bg-red-600 p-2 shadow-lg">
+                          <Play className="h-4 w-4 text-white fill-white ml-0.5" />
                         </div>
                       )}
                     </div>
-                    
+                    {/* Bottom gradient + title text over the video */}
+                    <div className="absolute bottom-0 left-0 right-0 z-[2] bg-gradient-to-t from-black via-black/85 to-transparent px-2 pt-10 pb-2 pointer-events-none">
+                      <h3 className="text-white text-[13px] font-bold leading-snug line-clamp-3 drop-shadow-md" title={reel.title}>
+                        {reel.title}
+                      </h3>
+                      <p className="text-gray-300 text-[10px] leading-tight mt-0.5 flex items-center gap-1">
+                        <span
+                          className="flex items-center gap-1 pointer-events-auto relative z-10 cursor-pointer"
+                          onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleLike(reel._id, e); }}
+                        >
+                          <Heart className={`h-2.5 w-2.5 ${isLiked(reel._id, reel.isLiked) ? 'fill-red-500 text-red-500' : ''}`} />
+                          <span>{reel.likes}</span>
+                        </span>
+                        <span>•</span>
+                        <span>{reel.views} views</span>
+                        <span>•</span>
+                        <span>{formatTimeAgo(reel.createdAt)}</span>
+                      </p>
+                    </div>
+
                     {/* Mute/unmute button */}
                     <button
-                      className="absolute bottom-2 right-2 p-2 rounded-full bg-black/50 text-white"
-                      onClick={toggleMute}
+                      className="absolute top-2 right-2 z-10 p-1.5 rounded-full bg-black/50 text-white"
+                      onClick={(e) => { e.preventDefault(); e.stopPropagation(); toggleMute(e); }}
                     >
-                      {isMuted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
+                      {isMuted ? <VolumeX className="h-3.5 w-3.5" /> : <Volume2 className="h-3.5 w-3.5" />}
                     </button>
-                    
+
                     {/* Duration badge */}
-                    <span className="absolute bottom-2 left-2 bg-black/50 text-white text-xs px-2 py-1 rounded">
+                    <span className="absolute top-2 left-2 z-[2] bg-black/60 text-white text-[10px] px-1.5 py-0.5 rounded">
                       {formatDuration(reel.duration)}
                     </span>
-                    
-                    {/* Category badge if exists */}
-                    {reel.category && (
-                      <Badge 
-                        className="absolute top-2 left-2" 
-                        variant={reel.featured ? "default" : "secondary"}
-                      >
-                        {getCategoryName(reel.category)}
-                      </Badge>
-                    )}
-                  </div>
-                  
-                  <div className="p-4 flex-grow flex flex-col">
-                    <h3 className="font-medium mb-1 line-clamp-1">{reel.title}</h3>
-                    
-                    {reel.description && (
-                      <div className="mb-2">
-                        <p className="text-sm text-gray-500 line-clamp-2">
-                          {reel.description}
-                        </p>
-                        {reel.description.length > 100 && (
-                          <Link to={`/reels/${reel._id}`} className="text-primary text-xs hover:underline">
-                            Read more
-                          </Link>
-                        )}
-                      </div>
-                    )}
-                    
-                    <div className="flex items-center justify-between text-sm text-gray-500 mt-auto pt-2 border-t">
-                      <Button 
-                        variant="ghost" 
-                        size="sm" 
-                        className="flex items-center space-x-1 px-2"
-                        onClick={(e) => handleLike(reel._id, e)}
-                      >
-                        <Heart className="h-4 w-4" />
-                        <span>{reel.likes}</span>
-                      </Button>
-                      
-                      <Link to={`/reels/${reel._id}`}>
-                        <Button variant="ghost" size="sm" className="flex items-center space-x-1 px-2">
-                          <MessageSquare className="h-4 w-4" />
-                          <span>{reel.comments}</span>
-                        </Button>
-                      </Link>
-                      
-                      <span className="text-xs">{formatTimeAgo(reel.createdAt)}</span>
-                    </div>
-                    
-                    <div className="mt-2 text-right">
-                      <Link 
-                        to={`/reels/${reel._id}`}
-                        className="text-sm text-primary hover:underline"
-                      >
-                        View Reel
-                      </Link>
-                    </div>
+
+                    {/* Full-card click -> detail page */}
+                    <Link
+                      to={`/reels/${reel._id}`}
+                      className="absolute inset-0"
+                      aria-label={reel.title}
+                      onClick={(e) => { if (activeReel === reel._id) e.preventDefault(); }}
+                    />
                   </div>
                 </div>
               </CarouselItem>
@@ -411,7 +379,7 @@ const ReelsCarousel: React.FC<ReelsCarouselProps> = ({
           </CarouselContent>
           
           {/* Interactive navigation dots */}
-          <div className="flex justify-center mt-4">
+          <div className="flex justify-center mt-1.5">
             {Array.from({ length: Math.ceil(reels.length / 4) }).map((_, index) => (
               <button
                 key={index}

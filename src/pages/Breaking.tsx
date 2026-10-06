@@ -63,16 +63,16 @@ const Breaking = () => {
     return `${Math.floor(diffInSeconds / 86400)} days ago`;
   };
   
-  // Get image URL helper function
+  // Get image URL helper function (canonical: VITE_MEDIA_URL, works with /api or absolute base)
   const getImageUrl = (image: string) => {
     if (!image) return 'https://via.placeholder.com/600x400?text=No+Image';
     if (image.startsWith('http')) return image;
-    
-    // Handle relative paths
-    const baseServerUrl = import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:5000';
-    return image.startsWith('/') 
-      ? `${baseServerUrl}${image}` 
-      : `${baseServerUrl}/uploads/${image}`;
+    const mediaBase = (import.meta.env.VITE_MEDIA_URL as string) || ((import.meta.env.VITE_API_URL as string || '').replace(/\/api\/?$/, '') + '/uploads') || 'http://localhost:5003/uploads';
+    const clean = image.replace(/^\/+/, '');
+    if (clean.startsWith('uploads/')) return `${mediaBase.replace(/\/uploads\/?$/, '')}/${clean}`;
+    return image.startsWith('/')
+      ? `${mediaBase.replace(/\/uploads\/?$/, '')}${image}`
+      : `${mediaBase.replace(/\/$/, '')}/${clean}`;
   };
 
   return (

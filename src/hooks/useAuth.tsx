@@ -77,29 +77,42 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     async function checkAuth() {
       try {
         setIsLoading(true);
-        const storedToken = localStorage.getItem('token');
-        const storedUser = localStorage.getItem('user');
+        const storedToken = localStorage.getItem('token') || sessionStorage.getItem('token');
+        const storedUser = localStorage.getItem('user') || sessionStorage.getItem('user');
 
         if (storedToken && storedUser) {
-          // Verify token validity with the server
+          // Verify token validity with the server (tolerates both {data:{user}} and {user} shapes)
           const response = await authApi.verifyToken();
-          if (response.success && response.data) {
+          const serverUser = (response.data as any)?.user || (response as any)?.user || (response.data as any);
+          if (response.success && serverUser && (serverUser._id || serverUser.email)) {
+            // Preserve our stored token (server never returns it)
+            const merged = { ...JSON.parse(storedUser), ...serverUser, token: storedToken };
+            localStorage.setItem('user', JSON.stringify(merged));
+            setToken(storedToken);
+            setUser(merged as User);
+          } else if (response.success) {
+            // Verified but no user payload — trust stored session
             setToken(storedToken);
             setUser(JSON.parse(storedUser));
-          } else {
-            // If token verification fails, clear stored data
+          } else if ((response as any)?.status === 401) {
+            // Token genuinely rejected — clear session
             localStorage.removeItem('user');
             localStorage.removeItem('token');
             sessionStorage.removeItem('user');
             sessionStorage.removeItem('token');
+          } else {
+            // Network/server error (not 401) — keep stored session so refresh doesn't log out
+            setToken(storedToken);
+            try { setUser(JSON.parse(storedUser)); } catch {}
           }
         }
       } catch (err) {
-        console.error('Authentication error:', err);
-        localStorage.removeItem('user');
-        localStorage.removeItem('token');
-        sessionStorage.removeItem('user');
-        sessionStorage.removeItem('token');
+        // Network failure — do NOT log out; keep stored session
+        try {
+          const t = localStorage.getItem('token') || sessionStorage.getItem('token');
+          const u = localStorage.getItem('user') || sessionStorage.getItem('user');
+          if (t && u) { setToken(t); setUser(JSON.parse(u)); }
+        } catch {}
       } finally {
         setIsLoading(false);
       }
@@ -162,10 +175,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return { success: false, message: 'Passwords do not match' };
       }
 
-      // Password strength validation
-      if (userData.password.length < 8) {
-        setError('Password must be at least 8 characters long');
-        return { success: false, message: 'Password must be at least 8 characters long' };
+      // Password strength validation (backend minlength is 6)
+      if (userData.password.length < 6) {
+        setError('Password must be at least 6 characters long');
+        return { success: false, message: 'Password must be at least 6 characters long' };
       }
 
       // Email validation
@@ -209,18 +222,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setIsLoading(true);
       setError(null);
 
-      const response = await authApi.updateProfile?.(data) ?? await fetch('/api/users/profile', {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
-        body: JSON.stringify(data),
-      }).then(r => r.json());
+      const currentToken = token || localStorage.getItem('token') || sessionStorage.getItem('token');
+      const response = await authApi.updateProfile(data);
 
       if (response.success) {
-        // Update user data in state and localStorage
-        const updatedUser = { ...user, ...response.data.user } as User;
+        // Update user data in state and localStorage (preserve token)
+        const serverUser = (response.data as any)?.user || (response.data as any);
+        const updatedUser = { ...user, ...serverUser, token: token || user?.token } as User;
         localStorage.setItem('user', JSON.stringify(updatedUser));
         sessionStorage.setItem('user', JSON.stringify(updatedUser));
         setUser(updatedUser);
@@ -243,8 +251,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setIsLoading(true);
       setError(null);
 
-      const storedToken = localStorage.getItem('token');
-      const storedUser = localStorage.getItem('user');
+      const storedToken = localStorage.getItem('token') || sessionStorage.getItem('token');
+      const storedUser = localStorage.getItem('user') || sessionStorage.getItem('user');
 
       if (!storedToken || !storedUser) {
         logout();
@@ -255,29 +263,38 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const response = await authApi.verifyToken();
 
       if (response.success) {
-        // If the server returns updated user data, use it
-        if (response.data && response.data.user) {
-          const updatedUser = response.data.user;
-          localStorage.setItem('user', JSON.stringify(updatedUser));
-          sessionStorage.setItem('user', JSON.stringify(updatedUser));
-          setUser(updatedUser);
-        } else if (response.data) {
-          // Fallback for backward compatibility
-          localStorage.setItem('user', JSON.stringify(response.data));
-          sessionStorage.setItem('user', JSON.stringify(response.data));
-          setUser(response.data);
-        } else {
-          // Otherwise use the stored user data
-          setUser(JSON.parse(storedUser));
+        // Preserve token: /verify and /me return user WITHOUT token
+        try {
+          const serverUser = (response.data as any)?.user || (response as any)?.user || (response.data as any);
+          if (serverUser && typeof serverUser === 'object' && (serverUser._id || serverUser.email)) {
+            const merged = { ...JSON.parse(storedUser), ...serverUser, token: storedToken };
+            localStorage.setItem('user', JSON.stringify(merged));
+            sessionStorage.setItem('user', JSON.stringify(merged));
+            setUser(merged as User);
+          } else {
+            setUser(JSON.parse(storedUser));
+          }
+        } catch {
+          try { setUser(JSON.parse(storedUser)); } catch {}
         }
         setToken(storedToken);
         return true;
-      } else {
+      } else if ((response as any)?.status === 401) {
         logout();
         return false;
+      } else {
+        // Non-401 failure (network/server) — keep session, don't log out on refresh
+        try { setUser(JSON.parse(storedUser)); } catch {}
+        setToken(storedToken);
+        return true;
       }
     } catch (err) {
-      console.error('Auth check error:', err);
+      // Network failure — keep stored session instead of logging out
+      try {
+        const t = localStorage.getItem('token') || sessionStorage.getItem('token');
+        const u = localStorage.getItem('user') || sessionStorage.getItem('user');
+        if (t && u) { setToken(t); setUser(JSON.parse(u)); return true; }
+      } catch {}
       logout();
       return false;
     } finally {

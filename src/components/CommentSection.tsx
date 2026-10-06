@@ -209,12 +209,12 @@ const CommentSection: React.FC<CommentProps> = ({ articleId }) => {
       <Card className="p-4">
         <div className="flex items-start gap-3">
           <Avatar>
-            <AvatarImage src={comment.user.avatar} alt={comment.user.name} />
-            <AvatarFallback>{comment.user.name.charAt(0)}</AvatarFallback>
+            <AvatarImage src={comment.user?.avatar} alt={comment.user?.name || 'User'} />
+            <AvatarFallback>{(comment.user?.name || 'U').charAt(0)}</AvatarFallback>
           </Avatar>
           <div className="flex-1">
             <div className="flex justify-between items-center mb-1">
-              <h4 className="font-semibold">{comment.user.name}</h4>
+              <h4 className="font-semibold">{comment.user?.name || 'Deleted user'}</h4>
               <span className="text-xs text-gray-500">{formatDate(comment.createdAt)}</span>
             </div>
             <p className="text-gray-700">{comment.content}</p>

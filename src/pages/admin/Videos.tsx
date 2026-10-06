@@ -72,7 +72,7 @@ const formSchema = z.object({
 // Function to fetch categories from the backend
 const fetchCategories = async () => {
   try {
-    const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/categories`);
+    const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5003/api'}/categories`);
     const data = await response.json();
     return data.map((cat: any) => ({ id: cat._id, name: cat.name }));
   } catch (error) {
@@ -114,9 +114,8 @@ const Videos = () => {
     setError(null);
     
     try {
-      // Force refresh from the server and use admin flag for dashboard data
-      // For admin use - fetch all videos, no need to filter by language initially
-      const response = await getVideos('hindi', 1, 100, undefined, true);
+      // Admin: fetch ALL videos regardless of language (backend staff sees everything)
+      const response = await getVideos('all', 1, 100, undefined, true);
 
       // Standard response handling
       if (response && Array.isArray(response.videos)) {
@@ -194,10 +193,10 @@ const Videos = () => {
   
   // Function to refresh categories
   const refreshCategories = async () => {
-    await fetchCategories();
+    const ok = await fetchCategories();
     toast({
-      title: "Categories refreshed", 
-      description: categoryError ? "Error: " + categoryError : "Categories have been refreshed"
+      title: "Categories refreshed",
+      description: ok ? "Categories have been refreshed" : "Could not refresh categories. Please try again."
     });
   };
   
@@ -314,12 +313,12 @@ const Videos = () => {
   // Filter videos based on search term
   const filteredVideos = videos.filter(video => {
     if (!searchTerm.trim()) return true;
-    
+
     const search = searchTerm.toLowerCase();
     return (
-      video.title.toLowerCase().includes(search) ||
+      (video.title || '').toLowerCase().includes(search) ||
       (video.description?.toLowerCase() || '').includes(search) ||
-      video.categoryName.toLowerCase().includes(search)
+      (video.categoryName || '').toLowerCase().includes(search)
     );
   });
   
@@ -330,20 +329,44 @@ const Videos = () => {
     setEditingVideo(null);
     setVideoFile(null);
     setThumbnailFile(null);
+    // Restore unsaved draft after refresh (files can't be restored by browsers)
+    let restored: any = null;
+    try {
+      const raw = localStorage.getItem('draft:video:new');
+      if (raw) restored = JSON.parse(raw);
+    } catch {}
     form.reset({
-      title: "",
-      description: "",
-      duration: "",
-      categoryId: "",
-      categoryName: "",
-      language: "hindi",
-      isActive: true,
-      isFeatured: false,
+      title: restored?.title || "",
+      description: restored?.description || "",
+      duration: restored?.duration || "",
+      categoryId: restored?.categoryId || "",
+      categoryName: restored?.categoryName || "",
+      language: restored?.language || "hindi",
+      isActive: restored?.isActive ?? true,
+      isFeatured: restored?.isFeatured ?? false,
       keepExistingVideo: true,
       keepExistingThumbnail: true,
     });
+    if (restored && (restored.title || restored.description)) {
+      toast({ title: "Draft restored", description: "Your unsaved video details were restored." });
+    }
     setIsDialogOpen(true);
   };
+
+  // Persist new-video dialog text state so refresh doesn't wipe it
+  const watchedVideoValues = form.watch();
+  useEffect(() => {
+    if (!isDialogOpen || editingVideo) return;
+    const t = setTimeout(() => {
+      try {
+        const { title, description, duration, categoryId, categoryName, language, isActive, isFeatured } = watchedVideoValues as any;
+        if (title || description || duration || categoryId) {
+          localStorage.setItem('draft:video:new', JSON.stringify({ title, description, duration, categoryId, categoryName, language, isActive, isFeatured }));
+        }
+      } catch {}
+    }, 600);
+    return () => clearTimeout(t);
+  }, [watchedVideoValues, isDialogOpen, editingVideo]);
 
   const openEditVideoDialog = (video: VideoType) => {
     setEditingVideo(video);
@@ -360,7 +383,7 @@ const Videos = () => {
       duration: video.duration,
       categoryId: categoryId || "",
       categoryName: video.categoryName || categoryObj?.name || "",
-      language: video.language || "hindi",
+      language: video.videoLanguage || video.language || "hindi",
       isActive: video.isActive,
       isFeatured: video.isFeatured,
       keepExistingVideo: true,
@@ -372,7 +395,7 @@ const Videos = () => {
   const handleDeleteVideo = async (id: string) => {
     try {
       await deleteVideo(id);
-      setVideos(videos.filter(video => video._id !== id));
+      setVideos((prev) => prev.filter(video => video._id !== id));
       toast({
         title: "Video deleted",
         description: "The video has been deleted successfully.",
@@ -399,12 +422,12 @@ const Videos = () => {
       formData.append('duration', video.duration);
       formData.append('categoryId', typeof video.category === 'string' ? video.category : video.category?._id || '');
       formData.append('categoryName', video.categoryName || '');
-      formData.append('language', video.language || 'hindi');
+      formData.append('language', video.videoLanguage || video.language || 'hindi');
       formData.append('isActive', video.isActive.toString());
-      
+
       const updatedVideo = await updateVideo(id, formData);
-      
-      setVideos(videos.map(v => v._id === id ? updatedVideo : v));
+
+      setVideos((prev) => prev.map(v => v._id === id ? updatedVideo : v));
       
       toast({
         title: !video.isFeatured ? "Added to featured" : "Removed from featured",
@@ -525,7 +548,8 @@ const Videos = () => {
         // Create new video
         await createVideo(formData, progressCallback);
         await fetchVideos();
-        
+        try { localStorage.removeItem('draft:video:new'); } catch {}
+
         toast({
           title: "Video added",
           description: `"${values.title}" has been added successfully.`,

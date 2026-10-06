@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { api } from '@/lib/api-client';
+import { useLikes } from '@/hooks/useLikes';
 import { getImageUrl } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from './ui/button';
@@ -23,9 +24,11 @@ interface ShortPost {
   author: {
     _id: string;
     name: string;
+    avatar?: string;
   } | string;
   tags: string[];
   likes: number;
+  isLiked?: boolean;
   comments: number;
   shares: number;
   createdAt: string;
@@ -49,6 +52,13 @@ const ShortPostsCarousel: React.FC<ShortPostsCarouselProps> = ({
   const [carouselApi, setCarouselApi] = useState<CarouselApi>();
   const [currentIndex, setCurrentIndex] = useState(0);
   const { toast } = useToast();
+  const navigate = useNavigate();
+  const { isLiked, toggleLike, seedFromServer } = useLikes('short-posts');
+
+  // Sync server liked flags
+  useEffect(() => {
+    if (posts.length) seedFromServer(posts);
+  }, [posts, seedFromServer]);
   
   // Track carousel index changes
   useEffect(() => {
@@ -124,27 +134,22 @@ const ShortPostsCarousel: React.FC<ShortPostsCarouselProps> = ({
     return date.toLocaleDateString();
   };
   
-  // Handle like functionality
+  // Handle like toggle — one user one like, red fill when liked
   const handleLike = async (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
     e.preventDefault();
-    try {
-      const response = await api.post(`/short-posts/${id}/like`);
-      
-      if (response.success) {
-        // Update likes count in the state
-        setPosts(posts.map(post => 
-          post._id === id ? { ...post, likes: post.likes + 1 } : post
-        ));
-      }
-    } catch (err) {
-      console.error('Error liking post:', err);
-      toast({
-        title: "Error",
-        description: "Failed to like post. Please try again.",
-        variant: "destructive",
-      });
+    const post = posts.find((p) => p._id === id);
+    const result = await toggleLike(id, post?.likes ?? 0);
+    if (!result.ok && result.reason === 'login') {
+      toast({ title: 'Login required', description: 'Please login to like posts.', variant: 'destructive' });
+      navigate('/login');
+      return;
     }
+    if (!result.ok) {
+      toast({ title: 'Error', description: 'Failed to like post. Please try again.', variant: 'destructive' });
+      return;
+    }
+    setPosts((prev) => prev.map((p) => (p._id === id ? { ...p, likes: result.likes, isLiked: result.liked } : p)));
   };
   
   // Handle share functionality
@@ -196,10 +201,16 @@ const ShortPostsCarousel: React.FC<ShortPostsCarouselProps> = ({
     return author?.name || 'Unknown';
   };
 
+  // Get author avatar (populated as `author.avatar` by the API)
+  const getAuthorAvatar = (author: any): string | null => {
+    if (typeof author === 'string') return null;
+    return author?.avatar || null;
+  };
+
   if (loading) {
     return (
-      <div className="space-y-4">
-        <div className="flex items-center justify-between mb-4">
+      <div className="">
+        <div className="flex items-center justify-between mb-1">
           <h2 className="text-2xl font-bold">Short Posts</h2>
         </div>
         
@@ -238,8 +249,8 @@ const ShortPostsCarousel: React.FC<ShortPostsCarouselProps> = ({
   }
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between mb-4">
+    <div className="space-y-1">
+      <div className="flex items-center justify-between mb-1">
         <h2 className="text-2xl font-bold">Short Posts</h2>
         
         {showViewMore && (
@@ -283,8 +294,17 @@ const ShortPostsCarousel: React.FC<ShortPostsCarouselProps> = ({
                   
                   <Link to={`/short-posts/${post._id}`} className="flex-grow no-underline text-inherit">
                     <div className="flex items-center space-x-2 mb-3">
-                      <div className="h-10 w-10 rounded-full bg-gray-200 flex items-center justify-center text-gray-500">
-                        {getAuthorName(post.author).charAt(0)}
+                      <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded-full bg-gray-200 flex items-center justify-center text-gray-500 font-medium">
+                        <span>{getAuthorName(post.author).charAt(0)}</span>
+                        {getAuthorAvatar(post.author) && (
+                          <img
+                            src={getImageUrl(getAuthorAvatar(post.author)!)}
+                            alt={getAuthorName(post.author)}
+                            className="absolute inset-0 h-full w-full object-cover"
+                            loading="lazy"
+                            onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
+                          />
+                        )}
                       </div>
                       <div>
                         <p className="font-medium">{getAuthorName(post.author)}</p>
@@ -323,13 +343,14 @@ const ShortPostsCarousel: React.FC<ShortPostsCarouselProps> = ({
                   </Link>
                   
                   <div className="flex justify-between text-gray-500 pt-2 border-t">
-                    <Button 
-                      variant="ghost" 
-                      size="sm" 
+                    <Button
+                      variant="ghost"
+                      size="sm"
                       className="flex items-center space-x-1 px-2"
+                      aria-pressed={isLiked(post._id, post.isLiked)}
                       onClick={(e) => handleLike(post._id, e)}
                     >
-                      <Heart className="h-4 w-4" />
+                      <Heart className={`h-4 w-4 ${isLiked(post._id, post.isLiked) ? 'fill-red-500 text-red-500' : ''}`} />
                       <span>{post.likes}</span>
                     </Button>
                     
@@ -360,7 +381,7 @@ const ShortPostsCarousel: React.FC<ShortPostsCarouselProps> = ({
           </CarouselContent>
           
           {/* Interactive navigation dots */}
-          <div className="flex justify-center mt-4">
+          <div className="flex justify-center mt-1.5">
             {Array.from({ length: Math.ceil(posts.length / 4) }).map((_, index) => (
               <button
                 key={index}

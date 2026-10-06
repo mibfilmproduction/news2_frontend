@@ -58,6 +58,7 @@ const AdminSports = lazy(() => import("./pages/admin/Sports"));
 const SportForm = lazy(() => import("./pages/admin/SportForm"));
 const AdminCareers = lazy(() => import("./pages/admin/Careers"));
 const PrivacyPolicy = lazy(() => import("./pages/PrivacyPolicy"));
+const Notifications = lazy(() => import("./pages/Notifications"));
 const Career = lazy(() => import("./pages/Career"));
 const CareerDetail = lazy(() => import("./pages/CareerDetail"));
 
@@ -105,6 +106,7 @@ const AppRoutes = () => {
           <Route path="reels" element={<ReelsPage />} />
           <Route path="reels/:id" element={<ReelDetail />} />
           <Route path="contact" element={<Contact />} />
+          <Route path="notifications" element={<Notifications />} />
           <Route path="privacy-policy" element={<PrivacyPolicy />} />
           <Route path="career" element={<Career />} />
           <Route path="career/:slug" element={<CareerDetail />} />

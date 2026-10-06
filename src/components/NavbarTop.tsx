@@ -13,6 +13,7 @@ import {
 import UserMenu from "./UserMenu";
 import logo from "@/assets/mibnews-logo.png";
 import { getCategories, CategoryType } from "@/services/categoryService";
+import { fetchNotifications, getUnreadCount, markAllAsRead, NotificationType } from "@/services/notificationService";
 import { cn } from "@/lib/utils";
 
 const STATIC_LINKS = [
@@ -32,9 +33,24 @@ const NavbarTop = () => {
   const [categories, setCategories] = useState<CategoryType[]>([]);
   const [isCategoriesLoading, setIsCategoriesLoading] = useState(true);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [notifications, setNotifications] = useState<NotificationType[]>([]);
+  const [unreadCount, setUnreadCount] = useState(0);
   const location = useLocation();
   const navigate = useNavigate();
   const { language } = useLanguage();
+
+  useEffect(() => {
+    let cancelled = false;
+    const load = async () => {
+      const list = await fetchNotifications(10);
+      if (cancelled) return;
+      setNotifications(list);
+      setUnreadCount(getUnreadCount(list));
+    };
+    load();
+    const id = setInterval(load, 60000);
+    return () => { cancelled = true; clearInterval(id); };
+  }, []);
 
   useEffect(() => {
     const fetchCategories = async () => {
@@ -158,29 +174,27 @@ const NavbarTop = () => {
             </Button>
 
             {/* Notifications */}
-            <DropdownMenu>
+            <DropdownMenu onOpenChange={(open) => { if (!open && notifications.length) { markAllAsRead(); setUnreadCount(0); } }}>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className="relative">
+                <Button variant="ghost" size="icon" className="relative" aria-label="Notifications">
                   <Bell className="h-5 w-5" />
-                  <span className="absolute -top-1 -right-1 h-4 w-4 bg-primary rounded-full text-[10px] text-white flex items-center justify-center">3</span>
+                  {unreadCount > 0 && (
+                    <span className="absolute -top-1 -right-1 h-4 min-w-4 px-1 bg-primary rounded-full text-[10px] text-white flex items-center justify-center">{unreadCount > 9 ? '9+' : unreadCount}</span>
+                  )}
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-80" sideOffset={5}>
                 <div className="px-4 py-3 font-medium border-b">Notifications</div>
-                <DropdownMenuItem className="flex flex-col items-start cursor-default p-3">
-                  <p className="font-medium">Breaking News Alert</p>
-                  <p className="text-xs text-gray-500 mt-1">PM announces new economic reforms package</p>
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem className="flex flex-col items-start cursor-default p-3">
-                  <p className="font-medium">Live Match Update</p>
-                  <p className="text-xs text-gray-500 mt-1">India vs Australia: India wins by 5 wickets</p>
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem className="flex flex-col items-start cursor-default p-3">
-                  <p className="font-medium">Weather Alert</p>
-                  <p className="text-xs text-gray-500 mt-1">Heavy rainfall expected in coastal areas</p>
-                </DropdownMenuItem>
+                {notifications.length === 0 ? (
+                  <div className="p-4 text-sm text-gray-500">No notifications yet.</div>
+                ) : (
+                  notifications.slice(0, 5).map((n) => (
+                    <DropdownMenuItem key={n._id} className="flex flex-col items-start cursor-pointer p-3" onSelect={() => { if (n.link) navigate(n.link); }}>
+                      <p className="font-medium">{n.title}</p>
+                      <p className="text-xs text-gray-500 mt-1 line-clamp-2">{n.message}</p>
+                    </DropdownMenuItem>
+                  ))
+                )}
                 <DropdownMenuSeparator />
                 <DropdownMenuItem className="text-center text-primary p-2">
                   <Link to="/notifications">View all notifications</Link>

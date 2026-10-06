@@ -23,6 +23,14 @@ import { MoreHorizontal, Plus, Search, Edit, Trash } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2 } from "lucide-react";
 import { getImageUrl } from '@/lib/utils';
+import { ALL_CITIES, ALL_CITIES_LABEL, ALL_STATES, ALL_STATES_LABEL, STATES, citiesForState, cityLabel, isAllCities, isAllStates, stateLabel } from '@/lib/cities';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 // Real article type from database
 type Article = {
@@ -42,6 +50,8 @@ type Article = {
     avatar: string;
   };
   tags: string[];
+  city?: string;
+  state?: string;
   articleLanguage: "hindi" | "english";
   metaTitle?: string;
   metaDescription?: string;
@@ -76,6 +86,8 @@ type Category = {
 const Articles = () => {
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState("");
+  const [selectedState, setSelectedState] = useState<string>(ALL_STATES);
+  const [selectedCity, setSelectedCity] = useState<string>(ALL_CITIES);
   const [articles, setArticles] = useState<Article[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -93,11 +105,11 @@ const Articles = () => {
     });
   };
   
-  // Fetch articles and categories when component mounts or search term changes
+  // Fetch articles and categories when component mounts or filters change
   useEffect(() => {
     fetchArticles();
     fetchCategories();
-  }, [searchTerm, currentPage]);
+  }, [searchTerm, currentPage, selectedState, selectedCity]);
   
   // Handle search input changes with debounce
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -119,6 +131,14 @@ const Articles = () => {
       // Add search parameter if available
       if (searchTerm) {
         params.search = searchTerm;
+      }
+
+      // Add state/city filters (backend treats 'all' as no filter)
+      if (selectedState && !isAllStates(selectedState)) {
+        params.state = selectedState;
+      }
+      if (selectedCity && !isAllCities(selectedCity)) {
+        params.city = selectedCity;
       }
       
       const response = await api.get('/news', params);
@@ -248,7 +268,7 @@ const Articles = () => {
       </Button>
     </div>
     
-    <div className="flex items-center justify-between pb-4">
+    <div className="flex flex-wrap items-center gap-3 pb-4">
       <div className="relative">
         <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500" />
         <Input
@@ -258,6 +278,34 @@ const Articles = () => {
           onChange={handleSearchChange}
         />
       </div>
+      <Select
+        value={selectedState}
+        onValueChange={(v) => { setSelectedState(v); setSelectedCity(ALL_CITIES); setCurrentPage(1); }}
+      >
+        <SelectTrigger className="w-[180px]">
+          <SelectValue placeholder="Filter by state" />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value={ALL_STATES}>{ALL_STATES_LABEL}</SelectItem>
+          {STATES.map((s) => (
+            <SelectItem key={s} value={s}>{s}</SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+      <Select
+        value={selectedCity}
+        onValueChange={(v) => { setSelectedCity(v); setCurrentPage(1); }}
+      >
+        <SelectTrigger className="w-[180px]">
+          <SelectValue placeholder="Filter by city" />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value={ALL_CITIES}>{ALL_CITIES_LABEL}</SelectItem>
+          {citiesForState(selectedState).map((c) => (
+            <SelectItem key={c} value={c}>{c}</SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
     </div>
     
     <div className="border rounded-md">
@@ -266,6 +314,8 @@ const Articles = () => {
           <TableRow>
             <TableHead>Title</TableHead>
             <TableHead>Category</TableHead>
+            <TableHead>State</TableHead>
+            <TableHead>City</TableHead>
             <TableHead>Author</TableHead>
             <TableHead>Status</TableHead>
             <TableHead>Date</TableHead>
@@ -294,6 +344,20 @@ const Articles = () => {
                   </div>
                 </TableCell>
                 <TableCell>{article.category?.name || 'Uncategorized'}</TableCell>
+                <TableCell>
+                  {isAllStates(article.state) ? (
+                    <Badge variant="outline" className="text-gray-500">{ALL_STATES_LABEL}</Badge>
+                  ) : (
+                    <Badge variant="secondary">{stateLabel(article.state)}</Badge>
+                  )}
+                </TableCell>
+                <TableCell>
+                  {isAllCities(article.city) ? (
+                    <Badge variant="outline" className="text-gray-500">{ALL_CITIES_LABEL}</Badge>
+                  ) : (
+                    <Badge variant="secondary">{cityLabel(article.city)}</Badge>
+                  )}
+                </TableCell>
                 <TableCell>{article.author?.name || 'Unknown'}</TableCell>
                 <TableCell>{getStatusBadge(article.status || 'draft')}</TableCell>
                 <TableCell>{new Date(article.createdAt).toLocaleDateString()}</TableCell>
@@ -318,8 +382,8 @@ const Articles = () => {
               </TableRow>
             ))
           ) : (
-            <TableRow>
-              <TableCell colSpan={7} className="text-center py-10">
+              <TableRow>
+                <TableCell colSpan={9} className="text-center py-10">
                 {isLoading ? (
                   <div className="flex justify-center items-center min-h-[300px]">
                     <Loader2 className="h-8 w-8 animate-spin" />

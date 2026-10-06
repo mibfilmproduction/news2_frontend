@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import SEO from '@/components/SEO';
-import { useSearchParams, Link } from 'react-router-dom';
+import { useSearchParams, Link, useNavigate } from 'react-router-dom';
 import { api } from '@/lib/api-client';
+import { useLikes } from '@/hooks/useLikes';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -22,6 +23,7 @@ interface ShortPost {
     avatar?: string;
   } | string;
   likes: number;
+  isLiked?: boolean;
   comments: number;
   shares: number;
   tags: string[];
@@ -40,7 +42,14 @@ const ShortPostsPage = () => {
   const [popularTags, setPopularTags] = useState<string[]>([]);
   const activeTab = searchParams.get('tab') || 'latest';
   const { toast } = useToast();
+  const navigate = useNavigate();
+  const { isLiked, toggleLike, seedFromServer } = useLikes('short-posts');
   const POSTS_PER_PAGE = 12;
+
+  // Sync server liked flags into persistent liked set
+  useEffect(() => {
+    if (posts.length) seedFromServer(posts);
+  }, [posts, seedFromServer]);
 
   // Fetch popular tags on component mount
   // Fallback tags to use when API fails
@@ -67,7 +76,7 @@ const ShortPostsPage = () => {
           
           try {
             // Fallback to direct fetch
-            const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+            const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:5003/api';
             const tagsUrl = `${baseUrl}/short-posts/tags`;
             const response = await fetch(tagsUrl);
             
@@ -231,7 +240,7 @@ const ShortPostsPage = () => {
           let baseUrl = import.meta.env.VITE_API_URL;
           if (!baseUrl) {
             // Default fallback URL if environment variable is not set
-            baseUrl = 'http://localhost:5000/api';
+            baseUrl = 'http://localhost:5003/api';
           }
           
           // Ensure baseUrl doesn't end with a slash
@@ -309,6 +318,7 @@ const ShortPostsPage = () => {
         const calculatedTotalPages = Math.max(1, Math.ceil(totalItems / POSTS_PER_PAGE));
         
         setPosts(extractedPosts);
+        seedFromServer(extractedPosts);
         setTotalPages(calculatedTotalPages);
         setError(null);
       } catch (error) {
@@ -357,52 +367,19 @@ const ShortPostsPage = () => {
     window.scrollTo(0, 0);
   };
   
-  // Handle like functionality with improved error handling and feedback
+  // Handle like toggle — one user one like, red fill when liked
   const handleLike = async (id: string) => {
-    try {
-      // Direct fetch call for more reliable error handling
-      const apiUrl = `${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/short-posts/${id}/like`;
-      console.log('Liking post with ID:', id);
-      
-      const response = await fetch(apiUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        }
-      });
-      
-      console.log('Like response status:', response.status);
-      
-      if (response.ok) {
-        const data = await response.json();
-        console.log('Like response data:', data);
-        
-        if (data.success) {
-          // Update likes count in the state
-          setPosts(posts.map(post => 
-            post._id === id ? { ...post, likes: post.likes + 1 } : post
-          ));
-          
-          // Show success toast
-          toast({
-            title: "Success",
-            description: "You liked this post!",
-            variant: "default",
-          });
-        } else {
-          throw new Error(data.message || 'Failed to like post');
-        }
-      } else {
-        throw new Error(`Server returned ${response.status}`);
-      }
-    } catch (err) {
-      console.error('Error liking post:', err);
-      toast({
-        title: "Error",
-        description: "Failed to like post. Please try again.",
-        variant: "destructive",
-      });
+    const post = posts.find((p) => p._id === id);
+    const result = await toggleLike(id, post?.likes ?? 0);
+    if (!result.ok && result.reason === 'login') {
+      toast({ title: 'Login required', description: 'Please login to like posts.', variant: 'destructive' });
+      navigate('/login');
+      return;
     }
+    if (!result.ok) return;
+    setPosts((prev) =>
+      prev.map((p) => (p._id === id ? { ...p, likes: result.likes, isLiked: result.liked } : p))
+    );
   };
   
   // Handle share functionality with improved error handling and user feedback
@@ -454,7 +431,7 @@ const ShortPostsPage = () => {
   const updateShareCount = async (postId: string) => {
     try {
       // Direct fetch for better error handling
-      const apiUrl = `${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/short-posts/${postId}/share`;
+      const apiUrl = `${import.meta.env.VITE_API_URL || 'http://localhost:5003/api'}/short-posts/${postId}/share`;
       
       const response = await fetch(apiUrl, {
         method: 'POST',
@@ -611,8 +588,17 @@ const ShortPostsPage = () => {
                 {/* Author info and timestamp */}
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center">
-                    <div className="h-10 w-10 rounded-full bg-gray-300 overflow-hidden flex items-center justify-center bg-primary text-white">
+                    <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded-full bg-gray-300 flex items-center justify-center bg-primary text-white">
                       {getAuthorName(post.author).charAt(0).toUpperCase()}
+                      {typeof post.author === 'object' && post.author?.avatar && (
+                        <img
+                          src={getImageUrl(post.author.avatar)}
+                          alt={getAuthorName(post.author)}
+                          className="absolute inset-0 h-full w-full object-cover"
+                          loading="lazy"
+                          onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
+                        />
+                      )}
                     </div>
                     <div className="ml-3">
                       <p className="font-medium text-sm">{getAuthorName(post.author)}</p>
@@ -655,13 +641,16 @@ const ShortPostsPage = () => {
                 
                 {/* Engagement stats */}
                 <div className="flex justify-between border-t pt-3">
-                  <Button 
-                    variant="ghost" 
-                    size="sm" 
+                  <Button
+                    variant="ghost"
+                    size="sm"
                     className="text-xs gap-1"
                     onClick={() => handleLike(post._id)}
+                    aria-pressed={isLiked(post._id, post.isLiked)}
                   >
-                    <Heart className="h-4 w-4" /> {post.likes}
+                    <Heart
+                      className={`h-4 w-4 ${isLiked(post._id, post.isLiked) ? 'fill-red-500 text-red-500' : ''}`}
+                    /> {post.likes}
                   </Button>
                   <Link to={`/short-posts/${post._id}`}>
                     <Button variant="ghost" size="sm" className="text-xs gap-1">

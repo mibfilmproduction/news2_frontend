@@ -33,6 +33,7 @@ import {
   FormDescription
 } from "@/components/ui/form";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { 
   MoreHorizontal, 
@@ -99,6 +100,7 @@ const Categories = () => {
 
   // Watch the name field to auto-generate slug
   const nameField = form.watch("name");
+  const watchedCategoryValues = form.watch();
   
   // Auto-generate slug when name changes and slug hasn't been manually edited
   useEffect(() => {
@@ -112,6 +114,20 @@ const Categories = () => {
     }
   }, [nameField, form, editingCategory]);
   
+  // Persist new-category text state so refresh doesn't wipe it
+  useEffect(() => {
+    if (!isDialogOpen || editingCategory) return;
+    const t = setTimeout(() => {
+      try {
+        const { name, description, slug, isActive, displayOrder } = watchedCategoryValues as any;
+        if (name || description || slug) {
+          localStorage.setItem('draft:category:new', JSON.stringify({ name, description, slug, isActive, displayOrder }));
+        }
+      } catch {}
+    }, 600);
+    return () => clearTimeout(t);
+  }, [watchedCategoryValues, isDialogOpen, editingCategory]);
+
   // Helper to convert a string to a URL-friendly slug
   const autoSlugify = (text: string): string => {
     return text
@@ -174,19 +190,25 @@ const Categories = () => {
     (category.description && category.description.toLowerCase().includes(searchTerm.toLowerCase()))
   );
   
-  // Open dialog for creating a new category
+  // Open dialog for creating a new category (restores unsaved draft after refresh)
   const openNewCategoryDialog = () => {
     // Clear any errors
     setError(null);
     // Reset editing state
     setEditingCategory(null);
-    // Reset form with empty values
+    // Restore draft if the user typed something before a refresh
+    let restored: any = null;
+    try {
+      const raw = localStorage.getItem('draft:category:new');
+      if (raw) restored = JSON.parse(raw);
+    } catch {}
+    // Reset form with empty values (or restored draft)
     form.reset({
-      name: "",
-      description: "",
-      slug: "",
-      isActive: true,
-      displayOrder: 0,
+      name: restored?.name || "",
+      description: restored?.description || "",
+      slug: restored?.slug || "",
+      isActive: restored?.isActive ?? true,
+      displayOrder: restored?.displayOrder ?? 0,
     });
     // Clear all validation errors
     form.clearErrors();
@@ -318,9 +340,10 @@ const Categories = () => {
         if (response.success && response.data) {
           // Create a new array to trigger re-render
           setCategories(prev => [...prev, { ...response.data, articlesCount: 0 }]);
-          
+
           // Reset form
           form.reset();
+          try { localStorage.removeItem('draft:category:new'); } catch {}
           
           toast({
             title: "Success",
@@ -444,9 +467,13 @@ const Categories = () => {
                         <DropdownMenuItem onClick={() => openEditCategoryDialog(category)}>
                           <Edit className="mr-2 h-4 w-4" />Edit
                         </DropdownMenuItem>
-                        <DropdownMenuItem 
+                        <DropdownMenuItem
                           className="text-red-600 focus:text-red-600"
-                          onClick={() => handleDeleteCategory(category._id)}
+                          onClick={() => {
+                            if (window.confirm(`Delete category "${category.name}"? Categories with articles cannot be deleted.`)) {
+                              handleDeleteCategory(category._id);
+                            }
+                          }}
                         >
                           <Trash className="mr-2 h-4 w-4" />Delete
                         </DropdownMenuItem>
@@ -521,7 +548,7 @@ const Categories = () => {
           
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <FormField
                   control={form.control}
                   name="name"
@@ -568,14 +595,14 @@ const Categories = () => {
                   <FormItem>
                     <FormLabel>Description (Optional)</FormLabel>
                     <FormControl>
-                      <Input placeholder="Brief description" {...field} />
+                      <Textarea placeholder="Brief description (max 500 characters)" maxLength={500} className="resize-none" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
               
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <FormField
                   control={form.control}
                   name="displayOrder"

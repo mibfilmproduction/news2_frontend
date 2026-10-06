@@ -40,8 +40,11 @@ export function getImageUrl(imagePath: string | undefined | null, fallbackImage:
   }
 
   // For local paths, use the MEDIA_URL (uploads directory), not API_URL
-  const mediaUrl = import.meta.env.VITE_MEDIA_URL || 'http://localhost:5003/uploads';
-  return `${mediaUrl}/${value.startsWith('/') ? value.slice(1) : value}`;
+  const mediaUrl = (import.meta.env.VITE_MEDIA_URL || 'http://localhost:5003/uploads').replace(/\/$/, '');
+  const clean = value.replace(/^\/+/, '');
+  // Avoid double `/uploads/uploads/...` when the stored path already includes it
+  const file = clean.startsWith('uploads/') ? clean.slice('uploads/'.length) : clean;
+  return `${mediaUrl}/${file}`;
 }
 
 /**

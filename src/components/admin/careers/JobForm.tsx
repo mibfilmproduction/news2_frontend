@@ -131,6 +131,43 @@ const JobForm: React.FC<JobFormProps> = ({
     }
   }, [job]);
 
+  // Restore unsaved new-job draft after refresh (edit mode loads server data instead)
+  useEffect(() => {
+    if (job) return;
+    try {
+      const raw = localStorage.getItem('draft:job:new');
+      if (raw) {
+        const d = JSON.parse(raw);
+        if (d && (d.title || d.description)) {
+          if (d.title) setTitle(d.title);
+          if (d.department) setDepartment(d.department);
+          if (d.location) setLocation(d.location);
+          if (d.jobType) setJobType(d.jobType);
+          if (d.description) setDescription(d.description);
+          if (Array.isArray(d.requirements) && d.requirements.length) setRequirements(d.requirements);
+          if (Array.isArray(d.responsibilities) && d.responsibilities.length) setResponsibilities(d.responsibilities);
+          if (d.experience) setExperience(d.experience);
+          if (d.education) setEducation(d.education);
+          toast({ title: 'Draft restored', description: 'Your unsaved job details were restored.' });
+        }
+      }
+    } catch {}
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Persist new-job text state so refresh doesn't wipe it
+  useEffect(() => {
+    if (job || !isOpen) return;
+    const t = setTimeout(() => {
+      try {
+        if (title || description) {
+          localStorage.setItem('draft:job:new', JSON.stringify({ title, department, location, jobType, description, requirements, responsibilities, experience, education }));
+        }
+      } catch {}
+    }, 600);
+    return () => clearTimeout(t);
+  }, [title, department, location, jobType, description, requirements, responsibilities, experience, education, job, isOpen]);
+
   // Generate slug from title
   useEffect(() => {
     if (!job) { // Only auto-generate slug for new jobs
@@ -295,6 +332,7 @@ const JobForm: React.FC<JobFormProps> = ({
         });
       } else {
         await createJob(jobData);
+        try { localStorage.removeItem('draft:job:new'); } catch {}
         toast({
           title: "Success",
           description: "New job has been created successfully",

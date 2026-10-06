@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import SEO from '@/components/SEO';
-import { useSearchParams, Link } from 'react-router-dom';
+import { useSearchParams, Link, useNavigate } from 'react-router-dom';
 import { api } from '@/lib/api-client';
+import { useLikes } from '@/hooks/useLikes';
 import { getImageUrl } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent } from '@/components/ui/card';
@@ -34,6 +35,7 @@ interface Reel {
   duration: number;
   views: number;
   likes: number;
+  isLiked?: boolean;
   comments: number;
   author: {
     _id: string;
@@ -65,7 +67,14 @@ const ReelsPage = () => {
   const [isMuted, setIsMuted] = useState(true);
   const videoRefs = useRef<{ [key: string]: HTMLVideoElement }>({});
   const { toast } = useToast();
+  const navigate = useNavigate();
+  const { isLiked, toggleLike, seedFromServer } = useLikes('reels');
   const REELS_PER_PAGE = 9;
+
+  // Sync server liked flags into persistent liked set
+  useEffect(() => {
+    if (reels.length) seedFromServer(reels);
+  }, [reels, seedFromServer]);
 
   // Fetch categories on component mount
   useEffect(() => {
@@ -102,7 +111,7 @@ const ReelsPage = () => {
         }
         
         // Use direct fetch for better error handling
-        const apiUrl = `${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/reels?${params.toString()}`;
+        const apiUrl = `${import.meta.env.VITE_API_URL || 'http://localhost:5003/api'}/reels?${params.toString()}`;
         console.log('Fetching reels from:', apiUrl);
         
         try {
@@ -331,52 +340,19 @@ const ReelsPage = () => {
     return date.toLocaleDateString();
   };
 
-  // Handle like functionality with improved error handling
+  // Handle like toggle — one user one like, red fill when liked
   const handleLike = async (id: string) => {
-    try {
-      // Direct fetch call for more reliable error handling
-      const apiUrl = `${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/reels/${id}/like`;
-      console.log('Liking reel with ID:', id);
-      
-      const response = await fetch(apiUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        }
-      });
-      
-      console.log('Like response status:', response.status);
-      
-      if (response.ok) {
-        const data = await response.json();
-        console.log('Like response data:', data);
-        
-        if (data.success) {
-          // Update likes count in the state
-          setReels(reels.map(reel =>
-            reel._id === id ? { ...reel, likes: reel.likes + 1 } : reel
-          ));
-          
-          // Show success toast
-          toast({
-            title: "Success",
-            description: "You liked this reel!",
-            variant: "default",
-          });
-        } else {
-          throw new Error(data.message || 'Failed to like reel');
-        }
-      } else {
-        throw new Error(`Server returned ${response.status}`);
-      }
-    } catch (err) {
-      console.error('Error liking reel:', err);
-      toast({
-        title: "Error",
-        description: "Failed to like reel. Please try again.",
-        variant: "destructive",
-      });
+    const reel = reels.find((r) => r._id === id);
+    const result = await toggleLike(id, reel?.likes ?? 0);
+    if (!result.ok && result.reason === 'login') {
+      toast({ title: 'Login required', description: 'Please login to like reels.', variant: 'destructive' });
+      navigate('/login');
+      return;
     }
+    if (!result.ok) return;
+    setReels((prev) =>
+      prev.map((r) => (r._id === id ? { ...r, likes: result.likes, isLiked: result.liked } : r))
+    );
   };
 
   // Get author name helper function
@@ -583,12 +559,13 @@ const ReelsPage = () => {
                       variant="ghost"
                       size="sm"
                       className="flex items-center space-x-1 px-2"
+                      aria-pressed={isLiked(reel._id, reel.isLiked)}
                       onClick={(e) => {
                         e.stopPropagation();
                         handleLike(reel._id);
                       }}
                     >
-                      <Heart className="h-4 w-4" />
+                      <Heart className={`h-4 w-4 ${isLiked(reel._id, reel.isLiked) ? 'fill-red-500 text-red-500' : ''}`} />
                       <span>{reel.likes}</span>
                     </Button>
 

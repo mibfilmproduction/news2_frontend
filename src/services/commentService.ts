@@ -79,7 +79,7 @@ export const submitComment = async (
  */
 export const getCommentReplies = async (commentId: string): Promise<CommentType[]> => {
   try {
-    const response = await commentApi.getAllComments({ parent: commentId });
+    const response = await commentApi.getCommentReplies(commentId);
     if (response.success && Array.isArray(response.data)) {
       return response.data;
     }

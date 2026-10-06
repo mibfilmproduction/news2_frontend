@@ -1,6 +1,7 @@
 // API utilities for making requests to the backend
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+const RAW_API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5003/api';
+const API_URL = RAW_API_URL.replace(/\/+$/, '');
 
 export interface ApiResponse<T = any> {
   success: boolean;
@@ -27,18 +28,21 @@ export interface ApiResponse<T = any> {
   articlesCount?: number; // For category deletion checks
 }
 
-// Get token from local storage
+// Get token from local/session storage (unified with api-client)
 const getToken = (): string | null => {
   try {
-    const userData = localStorage.getItem('user');
-    if (userData) {
-      const user = JSON.parse(userData);
-      return user.token || null;
+    for (const store of [localStorage, sessionStorage]) {
+      try {
+        const userData = store.getItem('user');
+        if (userData) {
+          const user = JSON.parse(userData);
+          if (user?.token) return user.token;
+        }
+      } catch {}
+      const direct = store.getItem('token');
+      if (direct) return direct;
     }
-  } catch (error) {
-    // Corrupt localStorage should not break the request path
-    console.error('Failed to parse stored user data:', error);
-  }
+  } catch {}
   return null;
 };
 
@@ -72,8 +76,14 @@ export const apiRequest = async <T>(
       headers: createHeaders(requireAuth),
     };
 
-    if (data && (method === 'POST' || method === 'PUT')) {
-      options.body = JSON.stringify(data);
+    if (data && (method === 'POST' || method === 'PUT' || method === 'PATCH' || method === 'DELETE')) {
+      if (data instanceof FormData) {
+        const h = options.headers as Record<string,string>;
+        delete h['Content-Type'];
+        options.body = data;
+      } else {
+        options.body = JSON.stringify(data);
+      }
     }
 
     const response = await fetch(url, options);

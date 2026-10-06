@@ -41,7 +41,8 @@ export const getFallbackImageUrl = (position?: string, title?: string): string =
     'in-article': 'ef4444',
     'breaking-news': '8b5cf6',
     'category-header': '6366f1',
-    'category-square': '0ea5e9'
+    'category-square': '0ea5e9',
+    'home-hero-side': 'f97316'
   };
   const color = position && colorMap[position] ? colorMap[position] : '3b82f6';
   
@@ -54,7 +55,7 @@ export interface Advertisement {
   title: string;
   imageUrl: string;
   targetUrl: string;
-  position: 'header' | 'sidebar' | 'footer' | 'in-article' | 'breaking-news' | 'category-header' | 'category-square';
+  position: 'header' | 'sidebar' | 'footer' | 'in-article' | 'breaking-news' | 'category-header' | 'category-square' | 'home-hero-side';
   displayOnPages: string[];
   startDate: string;
   endDate: string;
@@ -64,6 +65,12 @@ export interface Advertisement {
   createdAt: string;
   updatedAt: string;
   publicId?: string;
+  /** Dynamic sizing: 'preset' = fixed position size, 'custom' = admin width/height */
+  sizeMode?: 'preset' | 'custom';
+  customWidth?: number | null;
+  customHeight?: number | null;
+  width?: number | null;
+  height?: number | null;
 }
 
 // Cache mechanism to prevent excessive API calls
@@ -185,11 +192,8 @@ export const getAdvertisements = async (
       console.error('Response data:', error.response.data);
     }
     
-    console.log('API failed, using mock advertisement data');
-    return mockAdvertisements.filter(ad => 
-      ad.position === position && 
-      ad.displayOnPages.includes(page)
-    );
+    // Never show fake ads as real: return empty so UI renders nothing
+    return [];
   }
 };
 
