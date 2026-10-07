@@ -131,13 +131,15 @@ const Layout = () => {
 
   return (
     <div className="min-h-screen flex flex-col bg-gray-50">
-      <header className="sticky top-0 z-30 bg-white shadow-sm">
+      <header className="sticky top-0 z-30 bg-primary shadow-sm">
+        {/* Top notch / status-bar safe area — website red */}
+        <div aria-hidden="true" className="h-[env(safe-area-inset-top)] bg-primary" />
         <NavbarTop />
       </header>
 
       <BreakingNews />
 
-      <main className={`flex-1 container mx-auto px-4 ${isHome ? 'pt-1 pb-24 md:pb-6' : 'py-6 pb-24 md:pb-6'}`}>
+      <main className={`mx-auto w-full max-w-[1400px] flex-1 px-2 sm:px-4 ${isHome ? 'pt-1 pb-24 md:pb-6' : 'pt-2 pb-24 md:pb-6'}`}>
         <Outlet />
       </main>
 

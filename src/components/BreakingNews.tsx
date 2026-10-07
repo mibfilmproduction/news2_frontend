@@ -8,27 +8,18 @@ import { api } from '@/lib/api-client';
 
 const BreakingNews = () => {
   const { language } = useLanguage();
-  
-  // State for breaking news articles
   const [breakingArticles, setBreakingArticles] = useState<any[]>([]);
   const [newsLoading, setNewsLoading] = useState(true);
   const [newsError, setNewsError] = useState<Error | null>(null);
-  
-  // Fetch breaking news articles
+
   useEffect(() => {
     const fetchBreakingNews = async () => {
       try {
-        // Track the request start time for performance monitoring
         const startTime = performance.now();
         setNewsLoading(true);
-        
-        // Fetch breaking news articles using the main API
         const response = await api.get('/news', { breaking: 'true' });
-        
-        // Track timing for analytics
         const duration = performance.now() - startTime;
         analytics.timing('api', 'fetch_breaking_news', duration);
-        
         if (response.success && response.data) {
           setBreakingArticles(response.data);
         } else {
@@ -37,38 +28,22 @@ const BreakingNews = () => {
       } catch (error) {
         console.error('Error fetching breaking news:', error);
         setNewsError(error as Error);
-        // Log error to Sentry
         logError(error as Error, { component: 'BreakingNews', operation: 'fetchNews' });
       } finally {
         setNewsLoading(false);
       }
     };
-    
     fetchBreakingNews();
-    
-    // Refresh breaking news every 5 minutes
     const refreshInterval = setInterval(fetchBreakingNews, 5 * 60 * 1000);
     return () => clearInterval(refreshInterval);
   }, [language]);
-  
-  // Custom CSS for marquee animation if not defined in your global styles
+
   useEffect(() => {
-    // Add the marquee animation styles if needed
-    const styleSheet = document.styleSheets[0];
-    const keyframesRule = `@keyframes marquee { 
-      0% { transform: translateX(0); } 
-      100% { transform: translateX(-100%); }
-    }`;
-    const animationRule = `.animate-news-marquee { 
-      animation: marquee 30s linear infinite;
-    }`;
-    
-    // Only add if they don't exist
     try {
       if (!document.querySelector('style#marquee-animation')) {
         const styleElement = document.createElement('style');
         styleElement.id = 'marquee-animation';
-        styleElement.textContent = keyframesRule + animationRule;
+        styleElement.textContent = `@keyframes marquee{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}.animate-news-marquee{display:flex;width:max-content;align-items:center;animation:marquee 30s linear infinite}`;
         document.head.appendChild(styleElement);
       }
     } catch (error) {
@@ -76,62 +51,51 @@ const BreakingNews = () => {
     }
   }, []);
 
-  return (
-      <div className="bg-gray-100 py-2 border-t border-b border-gray-200">
-        <div className="container mx-auto px-4">
-          <div className="flex items-start sm:items-center sm:justify-center justify-center ">
-            
-            <div className="bg-primary text-white font-semibold px-3 py-1 mb-2 sm:mb-0 whitespace-nowrap rounded">
-              ताजा खबर
-            </div>
+  const renderItem = (article: any, extra?: { hidden?: boolean }) => (
+    <Link
+      key={extra?.hidden ? `repeat-${article._id}` : article._id}
+      to={`/article/${article.slug}`}
+      aria-hidden={extra?.hidden || undefined}
+      tabIndex={extra?.hidden ? -1 : undefined}
+      className="whitespace-nowrap text-sm font-medium transition-colors duration-200 hover:text-primary"
+      onClick={extra?.hidden ? undefined : () => analytics.event({ category: 'BreakingNews', action: 'click', label: article._id })}
+    >
+      {article.title}
+    </Link>
+  );
 
-            <div className="overflow-hidden w-full sm:flex-1 sm:ml-4">
-              {newsLoading ? (
-                <div className="flex items-center justify-center h-6">
-                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                  <span className="text-sm">{language === 'hindi' ? 'समाचार लोड हो रहा है...' : 'Loading news...'}</span>
-                </div>
-              ) : newsError ? (
-                <div className="flex items-center text-sm text-red-500">
-                  <AlertCircle className="h-4 w-4 mr-1" />
-                  <span>{language === 'hindi' ? 'समाचार लोड करने में त्रुटि' : 'Unable to load breaking news'}</span>
-                </div>
-              ) : breakingArticles.length === 0 ? (
-                <div className="text-sm text-gray-500">
-                  {language === 'hindi' ? 'इस समय कोई ताजा खबर नहीं है' : 'No breaking news at this time'}
-                </div>
-              ) : (
-                <div className="flex space-x-8 sm:space-x-16 animate-news-marquee hover:pause">
-                  {breakingArticles.map((article) => (
-                    <Link 
-                      key={article._id} 
-                      to={`/article/${article.slug}`}
-                      className="text-sm font-medium whitespace-nowrap hover:text-primary transition-colors duration-200"
-                      onClick={() => analytics.event({
-                        category: 'BreakingNews',
-                        action: 'click',
-                        label: article._id
-                      })}
-                    >
-                      {article.title}
-                    </Link>
-                  ))}
-                  {/* Duplicate items to create a seamless loop */}
-                  {breakingArticles.map((article) => (
-                    <Link 
-                      key={`repeat-${article._id}`} 
-                      to={`/article/${article.slug}`}
-                      className="text-sm font-medium whitespace-nowrap hover:text-primary transition-colors duration-200"
-                    >
-                      {article.title}
-                    </Link>
-                  ))}
-                </div>
-              )}
-            </div>
+  return (
+    <div className="border-b border-t border-gray-200 bg-gray-100 py-1 sm:py-1.5">
+      <div className="container mx-auto px-3 sm:px-4">
+        <div className="flex items-center gap-2 sm:gap-3">
+          <div className="shrink-0 whitespace-nowrap rounded-md bg-primary px-2.5 py-1 text-sm font-semibold text-white sm:px-3 sm:text-base">
+            ताजा खबर
+          </div>
+          <div className="relative min-w-0 flex-1 overflow-hidden">
+            {newsLoading ? (
+              <div className="flex h-6 items-center">
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                <span className="truncate text-sm">{language === 'hindi' ? 'समाचार लोड हो रहा है...' : 'Loading news...'}</span>
+              </div>
+            ) : newsError ? (
+              <div className="flex h-6 items-center text-sm text-red-500">
+                <AlertCircle className="mr-1 h-4 w-4 shrink-0" />
+                <span className="truncate">{language === 'hindi' ? 'समाचार लोड करने में त्रुटि' : 'Unable to load breaking news'}</span>
+              </div>
+            ) : breakingArticles.length === 0 ? (
+              <div className="flex h-6 items-center text-sm text-gray-500">
+                <span className="truncate">{language === 'hindi' ? 'इस समय कोई ताजा खबर नहीं है' : 'No breaking news at this time'}</span>
+              </div>
+            ) : (
+              <div className="animate-news-marquee gap-8 py-0.5 pr-8 hover:[animation-play-state:paused] sm:gap-16 sm:pr-16">
+                {breakingArticles.map((a) => renderItem(a))}
+                {breakingArticles.map((a) => renderItem(a, { hidden: true }))}
+              </div>
+            )}
           </div>
         </div>
       </div>
+    </div>
   );
 };
 

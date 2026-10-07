@@ -122,8 +122,37 @@
     @apply border-border;
   }
 
+  html {
+    background-color: #e2001a;
+  }
+
   body {
     @apply bg-background text-foreground;
+  }
+
+  /* Inner pages render their own `.container` inside Layout's <main>, which
+     doubles the side padding (esp. visible on phones) and stacks py-8 over
+     the main padding. Neutralize the nested container so every page matches
+     the tight Home spacing. */
+  main > div.container {
+    width: 100%;
+    max-width: none;
+    margin-left: 0;
+    margin-right: 0;
+    padding-left: 0;
+    padding-right: 0;
+  }
+  @media (max-width: 767px) {
+    main > div.container {
+      padding-top: 0;
+      padding-bottom: 0;
+    }
+    main > div.container.py-8,
+    main > div.container.py-6,
+    main > div.container.py-12 {
+      padding-top: 0.25rem;
+      padding-bottom: 0.25rem;
+    }
   }
 }
 
