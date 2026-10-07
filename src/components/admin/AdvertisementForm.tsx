@@ -183,14 +183,17 @@ const AdvertisementForm: React.FC<AdvertisementFormProps> = ({
   const handlePageSelection = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const options = e.target.options;
     const selectedPages: string[] = [];
-    
+
     for (let i = 0; i < options.length; i++) {
       if (options[i].selected) {
         selectedPages.push(options[i].value);
       }
     }
-    
-    setFormData(prev => ({ ...prev, displayOnPages: selectedPages }));
+
+    // 'all' is a backend-supported wildcard (matches every page request).
+    // Selecting it alongside specific pages is redundant — store just it.
+    const pages = selectedPages.includes('all') ? ['all'] : selectedPages;
+    setFormData(prev => ({ ...prev, displayOnPages: pages }));
   };
 
   // Handle image upload
@@ -392,6 +395,7 @@ const AdvertisementForm: React.FC<AdvertisementFormProps> = ({
               className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary h-32"
               required
             >
+              <option value="all">All Pages (show everywhere)</option>
               <option value="home">Home Page</option>
               <option value="category">Category Pages</option>
               <option value="article">Article Pages</option>
@@ -404,7 +408,7 @@ const AdvertisementForm: React.FC<AdvertisementFormProps> = ({
               <option value="contact">Contact Page</option>
             </select>
             <p className="text-xs text-gray-500 mt-1">
-              Hold Ctrl/Cmd to select multiple pages
+              Hold Ctrl/Cmd to select multiple pages. Choose "All Pages" so the ad shows on home, category, article and every other page.
             </p>
           </div>
           

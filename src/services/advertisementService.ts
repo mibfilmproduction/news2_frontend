@@ -76,12 +76,30 @@ export interface Advertisement {
 // Cache mechanism to prevent excessive API calls
 const adsCache: { [key: string]: { data: Advertisement[], timestamp: number } } = {};
 
+/** Storage key used to sync ad changes across browser tabs. */
+export const ADS_CHANGED_STORAGE_KEY = 'ads:changed-at';
+
 /**
  * Clear the ads cache (e.g. after an admin creates/updates/deletes an ad
  * so the new position shows immediately on the frontend).
+ *
+ * Also notifies every <AdvertisementDisplay/> on this page AND in other tabs:
+ * - same document via a window CustomEvent('ads:changed')
+ * - other tabs via a localStorage write (fires the 'storage' event there)
+ * so deleted ads disappear and new ads appear without a manual refresh.
  */
 export const clearAdsCache = () => {
   Object.keys(adsCache).forEach((key) => delete adsCache[key]);
+  try {
+    window.dispatchEvent(new CustomEvent('ads:changed'));
+  } catch {
+    /* non-browser environment — ignore */
+  }
+  try {
+    localStorage.setItem(ADS_CHANGED_STORAGE_KEY, String(Date.now()));
+  } catch {
+    /* storage unavailable — ignore */
+  }
 };
 
 /** @deprecated Use clearAdsCache instead (kept for backward compat). */

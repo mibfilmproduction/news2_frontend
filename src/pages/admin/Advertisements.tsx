@@ -120,6 +120,9 @@ const AdminAdvertisements: React.FC = () => {
     onSuccess: () => {
       toast.success("Advertisement deleted successfully");
       queryClient.invalidateQueries({ queryKey: ["admin-advertisements"] });
+      // Public homepage/category slots use ["advertisements", ...] keys —
+      // without this the deleted ad keeps showing there (stale cache).
+      queryClient.invalidateQueries({ queryKey: ["advertisements"] });
     },
     onError: (error: any) => {
       // Handle authentication errors
@@ -143,6 +146,7 @@ const AdminAdvertisements: React.FC = () => {
     onSuccess: () => {
       toast.success("Advertisement status updated");
       queryClient.invalidateQueries({ queryKey: ["admin-advertisements"] });
+      queryClient.invalidateQueries({ queryKey: ["advertisements"] });
     },
     onError: (error: any) => {
       // Handle authentication errors
@@ -198,6 +202,8 @@ const AdminAdvertisements: React.FC = () => {
     setIsCreateModalOpen(false);
     setIsEditModalOpen(false);
     queryClient.invalidateQueries({ queryKey: ["admin-advertisements"] });
+    // Newly created/edited ads must appear on the public site immediately.
+    queryClient.invalidateQueries({ queryKey: ["advertisements"] });
   };
 
   if (isLoading) return <Spinner size="lg" />;

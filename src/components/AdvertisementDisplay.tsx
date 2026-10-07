@@ -1,10 +1,10 @@
 import React, { useEffect, useMemo, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 
 // Import from the correct path
 import { Advertisement, getAdvertisements, trackAdImpression, trackAdClick } from '@/services/advertisementService';
-import { isValidImageUrl, getFallbackImageUrl } from '@/services/advertisementService';
+import { ADS_CHANGED_STORAGE_KEY, isValidImageUrl, getFallbackImageUrl } from '@/services/advertisementService';
 
 interface AdvertisementDisplayProps {
   position: Advertisement['position'];
@@ -76,9 +76,11 @@ const AdvertisementDisplay: React.FC<AdvertisementDisplayProps> = ({
   };
   
   const currentPage = getPageFromPath(location.pathname);
-  
+
   // Get language preference from localStorage or default to hindi
   const language = localStorage.getItem('language') as 'hindi' | 'english' || 'hindi';
+
+  const queryClient = useQueryClient();
 
   // Fetch advertisements for this position and current page
   const { data: advertisements, isLoading, error } = useQuery({
@@ -89,10 +91,29 @@ const AdvertisementDisplay: React.FC<AdvertisementDisplayProps> = ({
       const ads = await getAdvertisements(position, currentPage, language, true);
       return ads;
     },
-    staleTime: 60 * 1000,
+    staleTime: 30 * 1000,
     retry: 1,
     refetchOnWindowFocus: false,
   });
+
+  // Refresh immediately when an admin creates/updates/deletes an ad —
+  // otherwise deleted ads keep showing (stale cache) and new ads never
+  // appear until the cache expires. Listens on this document AND on other
+  // tabs (via the localStorage 'storage' event).
+  useEffect(() => {
+    const invalidate = () => {
+      queryClient.invalidateQueries({ queryKey: ['advertisements'] });
+    };
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === ADS_CHANGED_STORAGE_KEY) invalidate();
+    };
+    window.addEventListener('ads:changed', invalidate);
+    window.addEventListener('storage', onStorage);
+    return () => {
+      window.removeEventListener('ads:changed', invalidate);
+      window.removeEventListener('storage', onStorage);
+    };
+  }, [queryClient]);
 
   // Pick ONE stable ad per fetched list. With slotIndex, each slot on the
   // page shows a different ad (rotated across all ads of this position).
