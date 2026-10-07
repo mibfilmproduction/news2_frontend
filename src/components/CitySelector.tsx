@@ -106,18 +106,18 @@ const CitySelector: React.FC<{ className?: string; onOpenChange?: (open: boolean
           </span>
         </button>
       </SheetTrigger>
-      <SheetContent side="right" className="flex w-[320px] flex-col p-0 sm:max-w-sm">
-        <SheetHeader className="border-b border-gray-200 p-4 text-left">
+      <SheetContent side="right" className="flex w-[320px] flex-col border-l-0 bg-[#243A51] p-0 text-white sm:max-w-sm [&>button]:text-white/70 [&>button]:hover:text-white">
+        <SheetHeader className="border-b border-white/15 p-4 text-left">
           <div className="flex items-center justify-between">
-            <SheetTitle className="flex items-center gap-2 text-base">
-              <MapPin className="h-5 w-5 text-primary" />
+            <SheetTitle className="flex items-center gap-2 text-base text-white">
+              <MapPin className="h-5 w-5 text-yellow-300" />
               {hindi ? "अपना शहर चुनें" : "Choose your city"}
             </SheetTitle>
             {selectedCity && (
               <button
                 type="button"
                 onClick={clearSelection}
-                className="flex items-center gap-1 text-xs text-gray-500 hover:text-primary"
+                className="flex items-center gap-1 text-xs text-white/70 hover:text-yellow-300"
               >
                 <X className="h-3.5 w-3.5" />
                 {hindi ? "हटाएं" : "Clear"}
@@ -125,20 +125,20 @@ const CitySelector: React.FC<{ className?: string; onOpenChange?: (open: boolean
             )}
           </div>
           <div className="relative mt-3">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/50" />
             <input
               type="text"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder={hindi ? "राज्य या शहर खोजें..." : "Search state or city..."}
-              className="w-full rounded-full border border-gray-300 bg-gray-50 py-2 pl-9 pr-4 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+              className="w-full rounded-full border border-white/20 bg-white/10 py-2 pl-9 pr-4 text-sm text-white placeholder:text-white/50 focus:border-yellow-300/60 focus:outline-none"
             />
           </div>
         </SheetHeader>
 
         <div className="flex-1 overflow-y-auto p-2">
           {filteredStates.length === 0 && (
-            <p className="p-4 text-center text-sm text-gray-500">
+            <p className="p-4 text-center text-sm text-white/60">
               {hindi ? "कोई राज्य या शहर नहीं मिला" : "No state or city found"}
             </p>
           )}
@@ -148,15 +148,15 @@ const CitySelector: React.FC<{ className?: string; onOpenChange?: (open: boolean
               (c) => !q || c.toLowerCase().includes(q) || state.toLowerCase().includes(q)
             );
             return (
-              <div key={state} className="mb-1 overflow-hidden rounded-lg border border-gray-100">
+              <div key={state} className="mb-1 overflow-hidden rounded-lg border border-white/15 bg-white/5">
                 <div className="flex items-center">
                   <button
                     type="button"
                     onClick={() => goState(state)}
-                    className="flex-1 px-3 py-2.5 text-left text-sm font-medium text-gray-800 hover:bg-gray-50 hover:text-primary"
+                    className="flex-1 px-3 py-2.5 text-left text-sm font-medium text-white hover:bg-white/10 hover:text-yellow-300"
                   >
                     {state}
-                    <span className="ml-2 text-xs font-normal text-gray-400">
+                    <span className="ml-2 text-xs font-normal text-white/50">
                       ({(STATE_CITIES[state] || []).length})
                     </span>
                   </button>
@@ -164,15 +164,15 @@ const CitySelector: React.FC<{ className?: string; onOpenChange?: (open: boolean
                     type="button"
                     onClick={() => toggleState(state)}
                     aria-label={isOpen ? `Collapse ${state}` : `Expand ${state}`}
-                    className="m-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gray-100 text-gray-700 hover:bg-primary hover:text-white"
+                    className="m-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white/10 text-white hover:bg-yellow-300 hover:text-[#243A51]"
                   >
                     {isOpen ? <Minus className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
                   </button>
                 </div>
                 {isOpen && (
-                  <div className="border-t border-gray-100 bg-gray-50 px-2 py-2">
+                  <div className="border-t border-white/15 bg-black/20 px-2 py-2">
                     {cities.length === 0 ? (
-                      <p className="px-2 py-1 text-xs text-gray-500">
+                      <p className="px-2 py-1 text-xs text-white/60">
                         {hindi ? "इस राज्य में शहर नहीं मिले" : "No cities found in this state"}
                       </p>
                     ) : (
@@ -183,13 +183,13 @@ const CitySelector: React.FC<{ className?: string; onOpenChange?: (open: boolean
                             type="button"
                             onClick={() => goCity(city)}
                             className={cn(
-                              "flex items-center gap-2 rounded-md px-2 py-2 text-left text-sm hover:bg-white hover:text-primary",
+                              "flex items-center gap-2 rounded-md px-2 py-2 text-left text-sm hover:bg-white/10 hover:text-yellow-300",
                               selectedCity === city
-                                ? "font-semibold text-primary"
-                                : "text-gray-700"
+                                ? "font-semibold text-yellow-300"
+                                : "text-white/85"
                             )}
                           >
-                            <MapPin className="h-3.5 w-3.5 shrink-0 text-gray-400" />
+                            <MapPin className="h-3.5 w-3.5 shrink-0 text-white/40" />
                             {city}
                           </button>
                         ))}
