@@ -61,6 +61,7 @@ const PrivacyPolicy = lazy(() => import("./pages/PrivacyPolicy"));
 const Notifications = lazy(() => import("./pages/Notifications"));
 const Career = lazy(() => import("./pages/Career"));
 const CareerDetail = lazy(() => import("./pages/CareerDetail"));
+const GeoNews = lazy(() => import("./pages/GeoNews"));
 
 // Guard for admin-only pages (editor role is blocked)
 const AdminOnlyPage = ({ children }: { children: React.ReactNode }) => {
@@ -95,6 +96,8 @@ const AppRoutes = () => {
           {/* Sports routes removed */}
           <Route path="category/:slug" element={<CategoryPage />} />
           <Route path="article/:slug" element={<ArticleDetail />} />
+          <Route path="city/:cityName" element={<GeoNews mode="city" />} />
+          <Route path="state/:stateName" element={<GeoNews mode="state" />} />
           <Route path="world" element={<World />} />
           <Route path="search" element={<Search />} />
           <Route path="sports" element={<Sports />} />

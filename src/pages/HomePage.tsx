@@ -227,8 +227,8 @@ const HomePage = () => {
   const generateKeywords = () => {
     const baseKeywords = ['news', 'latest news', 'breaking news', 'india news'];
 
-    // Add category names
-    const categoryKeywords = categories.map(cat => cat.name.toLowerCase());
+    // Add category names (guard: a nameless category must not crash the page)
+    const categoryKeywords = categories.map(cat => (typeof cat?.name === 'string' ? cat.name : '').toLowerCase());
 
     // Add trending article keywords (up to 3 titles)
     const articleKeywords = articles.slice(0, 3).map(article => {

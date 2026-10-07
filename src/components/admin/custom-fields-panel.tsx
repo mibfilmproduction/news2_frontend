@@ -42,6 +42,35 @@ const FIELD_TYPES = [
   { value: "url", label: "URL", icon: Type },
 ];
 
+/**
+ * Coerce any stored value into a renderable field object.
+ * Legacy articles may carry customFields in older shapes — plain values
+ * (`{ key: "text" }`), nulls, or objects without `label`/`type` — which
+ * previously crashed the whole editor (`field.label.toLowerCase()` on
+ * undefined). Normalizing here keeps the editor alive and self-heals the
+ * entry on its next edit (key + value are always preserved).
+ */
+export const normalizeCustomField = (key: string, field: any) => {
+  if (field && typeof field === "object") {
+    return {
+      ...field,
+      label: typeof field.label === "string" && field.label ? field.label : key,
+      type: typeof field.type === "string" && field.type ? field.type : "text",
+      required: !!field.required,
+      options: Array.isArray(field.options) ? field.options : [],
+      value: field.value ?? field.defaultValue ?? "",
+    };
+  }
+  return {
+    label: key,
+    type: typeof field === "boolean" ? "boolean" : "text",
+    required: false,
+    options: [],
+    defaultValue: "",
+    value: field ?? "",
+  };
+};
+
 export function CustomFieldsPanel({ form }: CustomFieldsPanelProps) {
   const [showAddField, setShowAddField] = useState(false);
   const [newField, setNewField] = useState({
@@ -79,14 +108,21 @@ export function CustomFieldsPanel({ form }: CustomFieldsPanelProps) {
 
   const updateFieldValue = (key: string, value: any) => {
     const fields = { ...customFields };
-    if (fields[key]) {
-      fields[key].value = value;
+    if (key in fields) {
+      // Normalize first: writing `.value` onto a legacy primitive (string)
+      // would throw in strict mode — this also self-heals the stored shape.
+      const safe = normalizeCustomField(key, fields[key]);
+      safe.value = value;
+      fields[key] = safe;
       form.setValue("customFields", fields);
     }
   };
 
-  const renderFieldInput = (key: string, field: any) => {
-    const value = field.value || field.defaultValue || "";
+  const renderFieldInput = (key: string, rawField: any) => {
+    // Never trust the stored shape — normalize so `label`/`type` always exist.
+    const field = normalizeCustomField(key, rawField);
+    const value = field.value ?? field.defaultValue ?? "";
+    const placeholderLabel = field.label || key || "field";
     
     switch (field.type) {
       case "textarea":
@@ -94,7 +130,7 @@ export function CustomFieldsPanel({ form }: CustomFieldsPanelProps) {
           <Textarea
             value={value}
             onChange={(e) => updateFieldValue(key, e.target.value)}
-            placeholder={`Enter ${field.label.toLowerCase()}`}
+            placeholder={`Enter ${placeholderLabel.toLowerCase()}`}
             className="h-20"
           />
         );
@@ -104,7 +140,7 @@ export function CustomFieldsPanel({ form }: CustomFieldsPanelProps) {
             type="number"
             value={value}
             onChange={(e) => updateFieldValue(key, e.target.value)}
-            placeholder={`Enter ${field.label.toLowerCase()}`}
+            placeholder={`Enter ${placeholderLabel.toLowerCase()}`}
           />
         );
       case "boolean":
@@ -166,7 +202,7 @@ export function CustomFieldsPanel({ form }: CustomFieldsPanelProps) {
           <Input
             value={value}
             onChange={(e) => updateFieldValue(key, e.target.value)}
-            placeholder={`Enter ${field.label.toLowerCase()}`}
+            placeholder={`Enter ${placeholderLabel.toLowerCase()}`}
           />
         );
     }
@@ -198,7 +234,9 @@ export function CustomFieldsPanel({ form }: CustomFieldsPanelProps) {
           </div>
         ) : (
           <div className="space-y-3">
-            {Object.entries(customFields).map(([key, field]: [string, any]) => (
+            {Object.entries(customFields).map(([key, rawField]: [string, any]) => {
+              const field = normalizeCustomField(key, rawField);
+              return (
               <div key={key} className="border rounded-lg p-4 flex items-start gap-4">
                 <GripVertical className="h-6 w-6 text-muted-foreground mt-1" />
                 <div className="flex-1 space-y-2">
@@ -215,7 +253,8 @@ export function CustomFieldsPanel({ form }: CustomFieldsPanelProps) {
                   {renderFieldInput(key, field)}
                 </div>
               </div>
-            ))}
+              );
+            })}
           </div>
         )}
 

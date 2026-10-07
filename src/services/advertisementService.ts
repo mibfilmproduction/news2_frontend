@@ -156,48 +156,58 @@ export const getAdvertisements = async (
       return adsCache[cacheKey].data;
     }
     
-    const params = {
-      position,
-      page,
-      language,
-      active: true
-    };
-    
     console.log(`Fetching ads for position: ${position}, page: ${page}`);
-    
-    try {
-      const response = await advertisementApi.getAdvertisements(params);
 
-      if (response.data) {
-        let adsData: Advertisement[] = [];
+    // Fetch one language from the backend and normalize the envelope.
+    const fetchForLanguage = async (lang: string): Promise<Advertisement[]> => {
+      const response = await advertisementApi.getAdvertisements({
+        position,
+        page,
+        language: lang,
+        active: true,
+      });
 
-        if (response.data.data && Array.isArray(response.data.data)) {
-          adsData = response.data.data;
-        } else if (Array.isArray(response.data)) {
-          adsData = response.data;
-        } else if (response.data.results && Array.isArray(response.data.results)) {
-          adsData = response.data.results;
-        } else {
-          console.warn('Unexpected API response structure:', response.data);
-          if (response.data.advertisements) {
-            adsData = Array.isArray(response.data.advertisements) ? response.data.advertisements : [response.data.advertisements];
-          }
+      if (!response.data) return [];
+
+      let adsData: Advertisement[] = [];
+      if (response.data.data && Array.isArray(response.data.data)) {
+        adsData = response.data.data;
+      } else if (Array.isArray(response.data)) {
+        adsData = response.data;
+      } else if (response.data.results && Array.isArray(response.data.results)) {
+        adsData = response.data.results;
+      } else {
+        console.warn('Unexpected API response structure:', response.data);
+        if (response.data.advertisements) {
+          adsData = Array.isArray(response.data.advertisements) ? response.data.advertisements : [response.data.advertisements];
         }
-
-        // The backend already filters by position + page + language +
-        // active + date range, so return its result as-is. Showing a
-        // wrong-position ad as "fallback" only confuses admins ("I added a
-        // footer ad but a header ad shows in the footer slot").
-        const filteredAds = adsData.filter((ad) => ad.position === position);
-
-        adsCache[cacheKey] = {
-          data: filteredAds,
-          timestamp: now
-        };
-
-        return filteredAds;
       }
-      return [];
+
+      // The backend already filters by position + page + language +
+      // active + date range, so return its result as-is. Showing a
+      // wrong-position ad as "fallback" only confuses admins ("I added a
+      // footer ad but a header ad shows in the footer slot").
+      return adsData.filter((ad) => ad.position === position);
+    };
+
+    try {
+      let filteredAds = await fetchForLanguage(language);
+
+      // Language fallback: ads are creatives, not articles — an empty slot
+      // looks broken. If nothing exists in the current language (e.g. site
+      // in English but all ads made in Hindi), fall back to Hindi ads
+      // instead of rendering nothing.
+      if (filteredAds.length === 0 && language !== 'hindi') {
+        console.log(`No ${language} ads for ${position} on ${page} — falling back to hindi`);
+        filteredAds = await fetchForLanguage('hindi');
+      }
+
+      adsCache[cacheKey] = {
+        data: filteredAds,
+        timestamp: now
+      };
+
+      return filteredAds;
     } catch (apiError) {
       console.error('API error when fetching advertisements:', apiError);
       return [];

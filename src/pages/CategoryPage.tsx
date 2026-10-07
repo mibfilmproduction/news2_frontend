@@ -158,21 +158,24 @@ const CategoryPage = () => {
     );
   }
 
-  // Generate SEO keywords for the category page
+  // Generate SEO keywords for the category page (all fields guarded —
+  // malformed docs must never crash the page via toLowerCase on undefined).
   const generateKeywords = () => {
     if (!category) return [];
-    
+    const catName = (typeof category.name === 'string' ? category.name : '').toLowerCase();
+
     // Base keywords for the category
-    const baseKeywords = ['news', category.name.toLowerCase(), `${category.name.toLowerCase()} news`];
-    
+    const baseKeywords = ['news', catName, `${catName} news`];
+
     // Add language-specific keywords
-    const languageKeywords = language === 'hindi' 
-      ? [`हिंदी ${category.name.toLowerCase()}`, 'हिंदी समाचार']
-      : [`english ${category.name.toLowerCase()} news`, 'indian news'];
-    
+    const languageKeywords = language === 'hindi'
+      ? [`हिंदी ${catName}`, 'हिंदी समाचार']
+      : [`english ${catName} news`, 'indian news'];
+
     // Add keywords from article titles (up to 3)
     const articleKeywords = articles.slice(0, 3).map(article => {
-      return article.title.split(' ').slice(0, 2).join(' ').toLowerCase();
+      const title = typeof article?.title === 'string' ? article.title : '';
+      return title.split(' ').slice(0, 2).join(' ').toLowerCase();
     });
     
     return [...baseKeywords, ...languageKeywords, ...articleKeywords, 'mibnews'];

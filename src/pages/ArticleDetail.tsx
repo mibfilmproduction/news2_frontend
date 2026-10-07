@@ -194,31 +194,36 @@ const ArticleDetail = () => {
     return format(date, 'MMMM dd, yyyy');
   };
 
-  // Helper function to generate SEO keywords based on article content
+  // Helper function to generate SEO keywords based on article content.
+  // Every field is coerced defensively — a single malformed article
+  // (missing title/category/author name) previously crashed the whole
+  // page via `toLowerCase()` on undefined ("Something went wrong").
+  const safeLower = (v: unknown): string =>
+    typeof v === 'string' ? v.toLowerCase() : '';
   const generateKeywords = () => {
     if (!article) return [];
-    
+
     // Base keywords from article title and category
     const baseKeywords: string[] = [];
-    
+
     // Add title-based keywords
-    const titleWords = article.title.toLowerCase().split(' ');
+    const titleWords = safeLower(article.title).split(' ');
     const titleKeywords = titleWords.filter(word => word.length > 3).slice(0, 5); // Use main words from title
-    
+
     // Add category as keyword
     let categoryName = '';
     if (typeof article.category === 'object' && article.category) {
-      categoryName = article.category.name.toLowerCase();
+      categoryName = safeLower(article.category.name);
     } else if (typeof article.category === 'string') {
-      categoryName = article.category.toLowerCase();
+      categoryName = safeLower(article.category);
     }
-    
+
     // Add author as keyword if available
     let authorName = '';
     if (typeof article.author === 'object' && article.author) {
-      authorName = article.author.name.toLowerCase();
+      authorName = safeLower(article.author.name);
     } else if (typeof article.author === 'string') {
-      authorName = article.author.toLowerCase();
+      authorName = safeLower(article.author);
     }
     
     // Combine all keywords
@@ -383,12 +388,16 @@ const ArticleDetail = () => {
         </div>
       </div>
 
-      {/* Featured Image */}
+      {/* Featured Image (broken URLs fall back instead of showing 404) */}
       <div className="mb-8">
-        <img 
-          src={getImageUrl(article.image)} 
-          alt={article.title} 
+        <img
+          src={getImageUrl(article.image)}
+          alt={article.title}
           className="w-full max-h-[500px] object-cover rounded-lg shadow-md"
+          onError={(e) => {
+            e.currentTarget.onerror = null;
+            e.currentTarget.src = '/placeholder.svg';
+          }}
         />
       </div>
 
@@ -406,10 +415,14 @@ const ArticleDetail = () => {
               <Card key={related._id} className="overflow-hidden">
                 <Link to={`/article/${related.slug}`}>
                   <div className="relative h-[200px]">
-                    <img 
-                      src={getImageUrl(related.image)} 
-                      alt={related.title} 
+                    <img
+                      src={getImageUrl(related.image)}
+                      alt={related.title}
                       className="w-full h-full object-cover"
+                      onError={(e) => {
+                        e.currentTarget.onerror = null;
+                        e.currentTarget.src = '/placeholder.svg';
+                      }}
                     />
                   </div>
                   <div className="p-4">

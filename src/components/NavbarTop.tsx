@@ -11,6 +11,7 @@ import {
   DropdownMenuTrigger
 } from "@/components/ui/dropdown-menu";
 import UserMenu from "./UserMenu";
+import CitySelector from "./CitySelector";
 import logo from "@/assets/mibnews-logo.png";
 import { getCategories, CategoryType } from "@/services/categoryService";
 import { fetchNotifications, getUnreadCount, markAllAsRead, NotificationType } from "@/services/notificationService";
@@ -283,6 +284,9 @@ const NavbarTop = () => {
                 </DropdownMenuContent>
               </DropdownMenu>
             )}
+
+            {/* Choose City — end of the row, opens states/cities slider */}
+            <CitySelector className="ml-1" />
           </div>
 
           {/* Hidden measurer (same font/whitespace) to compute how many links fit in 85% */}
@@ -303,9 +307,11 @@ const NavbarTop = () => {
         </div>
       </div>
 
-      {/* Mobile Navigation Menu */}
+      {/* Mobile Navigation Menu — independently scrollable: the header is
+          sticky, so an uncapped menu would push items below the fold forever.
+          dvh keeps it usable with mobile browser chrome; vh is the fallback. */}
       {isMobileMenuOpen && (
-        <div className="md:hidden border-t border-gray-200 bg-white py-4">
+        <div className="md:hidden border-t border-gray-200 bg-white py-4 max-h-[calc(100vh-4.5rem)] max-h-[calc(100dvh-4.5rem)] overflow-y-auto overscroll-contain">
           <div className="container mx-auto px-4 flex flex-col space-y-3">
             {STATIC_LINKS.map((link) => (
               <Link
@@ -336,6 +342,8 @@ const NavbarTop = () => {
             <Link to="/contact" className="text-gray-800 hover:text-primary font-medium py-2">
               Contact
             </Link>
+
+            <CitySelector className="self-start" />
           </div>
         </div>
       )}

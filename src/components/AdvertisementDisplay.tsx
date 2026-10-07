@@ -14,7 +14,8 @@ interface AdvertisementDisplayProps {
   /**
    * Which ad to show when several ads share this position.
    * Each slot on the page passes a different index, so every slot shows
-   * a DIFFERENT admin ad (same size, different content).
+   * a DIFFERENT admin ad. If there are fewer ads than slots, the extra
+   * slots render nothing — one ad is never repeated on the same page.
    */
   slotIndex?: number;
   /**
@@ -88,11 +89,23 @@ const AdvertisementDisplay: React.FC<AdvertisementDisplayProps> = ({
     };
   }, [queryClient]);
 
-  // Pick ONE stable ad per fetched list. With slotIndex, each slot on the
-  // page shows a different ad (rotated across all ads of this position).
+  // Pick ONE stable ad per fetched list.
+  // - Identical duplicates (same creative uploaded multiple times: same
+  //   image + same target) collapse into ONE ad.
+  // - One ad shows only ONCE per page: if there are fewer ads than slots,
+  //   extra slots render nothing instead of repeating the same ad
+  //   (previously `slotIndex % length` repeated it in every slot).
   const ad = useMemo(() => {
     if (!advertisements || advertisements.length === 0) return null;
-    return advertisements[slotIndex % advertisements.length];
+    const seen = new Set<string>();
+    const uniqueAds = advertisements.filter((a) => {
+      const key = `${a.imageUrl}||${a.targetUrl}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+    if (slotIndex >= uniqueAds.length) return null;
+    return uniqueAds[slotIndex];
   }, [advertisements, slotIndex]);
 
   // Track impression exactly once per ad (StrictMode-safe).
