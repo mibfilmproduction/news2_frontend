@@ -18,38 +18,11 @@ interface AdvertisementDisplayProps {
    */
   slotIndex?: number;
   /**
-   * Force how the creative renders:
-   * - 'auto' (default): size defined by the ad position.
-   * - 'strip': full-width slim banner (80px tall), used to alternate
-   *   square ads as square -> banner -> square across slots.
+   * @deprecated No longer used — every ad renders full-width at its own
+   * aspect ratio (never cropped). Kept so existing call sites keep compiling.
    */
   variant?: 'auto' | 'strip';
 }
-
-/**
- * Real-ad sizing per position. These match the Cloudinary transformations
- * applied at upload time on the backend, so creatives render pixel-perfect
- * (same-to-same) with zero cropping or stretching.
- */
-const POSITION_STYLE: Record<
-  Advertisement['position'],
-  { container: string; maxHeight: number; strip?: boolean }
-> = {
-  'header': { container: 'max-w-[970px]', maxHeight: 90 },
-  'sidebar': { container: 'max-w-[300px]', maxHeight: 600 },
-  'footer': { container: 'max-w-[728px]', maxHeight: 90 },
-  // Small full-width strip banner — same height as a related article card
-  'in-article': { container: '', maxHeight: 80, strip: true },
-  'breaking-news': { container: 'max-w-[300px]', maxHeight: 250 },
-  'category-header': { container: 'max-w-[728px]', maxHeight: 90 },
-  // Compact 200x200 square, centered in its column
-  'category-square': { container: 'max-w-[200px]', maxHeight: 200 },
-  // Home hero top-right: EXACT same size as secondary article card (h-[180px], full column width)
-  'home-hero-side': { container: '', maxHeight: 180 },
-};
-
-/** Slim strip height = related-article card height (fixed, all positions). */
-const STRIP_HEIGHT = 80;
 
 const AdvertisementDisplay: React.FC<AdvertisementDisplayProps> = ({
   position,
@@ -157,63 +130,12 @@ const AdvertisementDisplay: React.FC<AdvertisementDisplayProps> = ({
     ad.imageUrl :
     getFallbackImageUrl(ad.position, ad.title);
 
-  const style = POSITION_STYLE[position] ?? POSITION_STYLE.header;
-  const isStrip = variant === 'strip' || style.strip === true;
-
-  // Dynamic sizing: when admin sets sizeMode='custom' with customWidth/
-  // customHeight, render with that exact aspect ratio so ANY size works.
-  const isCustomSized =
-    (ad as any)?.sizeMode === 'custom' &&
-    Number((ad as any)?.customWidth) > 0 &&
-    Number((ad as any)?.customHeight) > 0;
-  const customW = isCustomSized ? Number((ad as any).customWidth) : 0;
-  const customH = isCustomSized ? Number((ad as any).customHeight) : 0;
-
-  // home-hero-side must look EXACTLY like the related article card:
-  // full column width, h-[180px], cover, rounded card with border.
-  const isHeroSide = position === 'home-hero-side';
-
-  if (isHeroSide) {
-    return (
-      <div
-        className={`advertisement w-full mx-auto flex flex-col items-center ${className}`}
-        role="complementary"
-        aria-label={`Advertisement: ${ad.title}`}
-      >
-        <span className="mb-1 text-center text-[10px] font-medium uppercase tracking-[0.25em] text-gray-400">
-          Advertisement
-        </span>
-        <a
-          href={targetUrl}
-          target="_blank"
-          rel="noopener noreferrer sponsored"
-          onClick={() => handleAdClick(ad)}
-          className="block w-full overflow-hidden rounded-lg border border-gray-200 bg-white hover:opacity-95 transition-opacity"
-        >
-          <img
-            src={imageUrl}
-            alt={ad.title}
-            loading="lazy"
-            decoding="async"
-            style={
-              isCustomSized
-                ? { aspectRatio: `${customW} / ${customH}`, width: '100%' }
-                : { height: 180, width: '100%' }
-            }
-            className="w-full object-cover"
-            onError={(e) => {
-              e.currentTarget.onerror = null;
-              e.currentTarget.src = getFallbackImageUrl(ad.position, ad.title);
-            }}
-          />
-        </a>
-      </div>
-    );
-  }
-
+  // Every ad fills its slot full-width at its OWN aspect ratio — exactly what
+  // was uploaded (backend never crops anymore). No max-width caps, no fixed
+  // heights, no object-cover: h-auto + w-full means zero cropping/stretching.
   return (
     <div
-      className={`advertisement w-full ${isStrip ? '' : style.container} mx-auto flex flex-col items-center ${className}`}
+      className={`advertisement w-full mx-auto flex flex-col items-center ${className}`}
       role="complementary"
       aria-label={`Advertisement: ${ad.title}`}
     >
@@ -233,16 +155,7 @@ const AdvertisementDisplay: React.FC<AdvertisementDisplayProps> = ({
           alt={ad.title}
           loading="lazy"
           decoding="async"
-          style={
-            isCustomSized
-              ? { aspectRatio: `${customW} / ${customH}`, width: '100%' }
-              : isStrip
-                ? { height: STRIP_HEIGHT, width: '100%' }
-                : { maxHeight: style.maxHeight }
-          }
-          className={isCustomSized || isStrip
-            ? "mx-auto w-full border border-gray-200 bg-white object-cover hover:opacity-95 transition-opacity"
-            : "mx-auto h-auto w-auto max-w-full border border-gray-200 bg-white object-contain hover:opacity-95 transition-opacity"}
+          className="mx-auto block h-auto w-full border border-gray-200 bg-white hover:opacity-95 transition-opacity"
           onError={(e) => {
             // If the image fails to load, replace with fallback
             e.currentTarget.onerror = null; // Prevent infinite error loops

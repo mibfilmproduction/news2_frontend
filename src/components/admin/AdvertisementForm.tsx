@@ -506,17 +506,10 @@ const AdvertisementForm: React.FC<AdvertisementFormProps> = ({
             
             <div className="mt-1">
               <p className="text-xs text-gray-500">
+                Uploaded image is never cropped — it always displays full-width in its slot at its original aspect ratio.
                 {(formData as any).sizeMode === 'custom' && (formData as any).customWidth && (formData as any).customHeight
-                  ? `Custom size ${(formData as any).customWidth}x${(formData as any).customHeight}px (no forced crop, exact ratio on display)`
-                  : 'Recommended dimensions (auto-resized on upload):'}
-                {(formData as any).sizeMode !== 'custom' && formData.position === 'header' && ' 970x90px (Leaderboard)'}
-                {(formData as any).sizeMode !== 'custom' && formData.position === 'sidebar' && ' 300x600px (Half Page)'}
-                {(formData as any).sizeMode !== 'custom' && formData.position === 'in-article' && ' 970x90px (Strip Banner)'}
-                {(formData as any).sizeMode !== 'custom' && formData.position === 'footer' && ' 728x90px (Leaderboard)'}
-                {(formData as any).sizeMode !== 'custom' && formData.position === 'breaking-news' && ' 300x250px (Medium Rectangle)'}
-                {(formData as any).sizeMode !== 'custom' && formData.position === 'category-header' && ' 728x90px (Leaderboard)'}
-                {(formData as any).sizeMode !== 'custom' && formData.position === 'category-square' && ' 200x200px (Square)'}
-                {(formData as any).sizeMode !== 'custom' && (formData.position as string) === 'home-hero-side' && ' 400x180px (same as related card)'}
+                  ? ` Custom cap: ${(formData as any).customWidth}x${(formData as any).customHeight}px (only shrinks bigger images, keeps ratio).`
+                  : ' Bigger uploads stay sharp on wide screens.'}
               </p>
             </div>
           </div>

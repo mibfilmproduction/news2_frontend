@@ -208,9 +208,8 @@ const HomePage = () => {
                 </CardContent>
               </Card>
             )}
-            {/* Square ad fills the leftover space under the 2 related
-                articles. Slots alternate: even slot = square (300x300),
-                odd slot = banner strip. */}
+            {/* Ad fills the leftover space under the related articles,
+                full-width at its own aspect ratio (never cropped). */}
             {squareAdSlot !== null && (
               <AdvertisementDisplay
                 position="category-square"
