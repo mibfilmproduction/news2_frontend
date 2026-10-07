@@ -4,6 +4,8 @@ import { Outlet, Link, useLocation } from 'react-router-dom';
 import NavbarTop from './NavbarTop';
 import BreakingNews from './BreakingNews';
 import CookieConsent from './CookieConsent';
+import BottomTabBar from './BottomTabBar';
+import MobileSideMenu from './MobileSideMenu';
 import { useLanguage } from './LanguageSwitcher';
 import { getCategories, CategoryType } from '@/services/categoryService';
 import { siteSettingApi, newsletterApi } from '@/lib/api-client';
@@ -135,7 +137,7 @@ const Layout = () => {
 
       <BreakingNews />
 
-      <main className={`flex-1 container mx-auto px-4 ${isHome ? 'pt-1 pb-6' : 'py-6'}`}>
+      <main className={`flex-1 container mx-auto px-4 ${isHome ? 'pt-1 pb-24 md:pb-6' : 'py-6 pb-24 md:pb-6'}`}>
         <Outlet />
       </main>
 
@@ -332,6 +334,8 @@ const Layout = () => {
           </div>
         </div>
       </footer>
+      <MobileSideMenu />
+      <BottomTabBar />
       <CookieConsent />
     </div>
   );

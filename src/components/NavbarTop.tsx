@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import UserMenu from "./UserMenu";
 import CitySelector from "./CitySelector";
+import { openMobileSideMenu } from "./MobileSideMenu";
 import logo from "@/assets/mibnews-logo.png";
 import { getCategories, CategoryType } from "@/services/categoryService";
 import { fetchNotifications, getUnreadCount, markAllAsRead, NotificationType } from "@/services/notificationService";
@@ -33,7 +34,6 @@ const NavbarTop = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [categories, setCategories] = useState<CategoryType[]>([]);
   const [isCategoriesLoading, setIsCategoriesLoading] = useState(true);
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [notifications, setNotifications] = useState<NotificationType[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const location = useLocation();
@@ -68,10 +68,6 @@ const NavbarTop = () => {
 
     fetchCategories();
   }, [language]);
-
-  useEffect(() => {
-    setIsMobileMenuOpen(false);
-  }, [location]);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -204,7 +200,7 @@ const NavbarTop = () => {
             </DropdownMenu>
 
             {/* Language Switcher */}
-            <LanguageSwitcher variant="compact" className="mr-2 hidden sm:block" />
+            <LanguageSwitcher variant="compact" className="mr-1 sm:mr-2" />
 
             {/* User Menu */}
             <UserMenu />
@@ -214,7 +210,7 @@ const NavbarTop = () => {
               variant="ghost"
               size="icon"
               className="inline-flex md:hidden"
-              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+              onClick={openMobileSideMenu}
             >
               <Menu className="h-5 w-5" />
             </Button>
@@ -307,46 +303,6 @@ const NavbarTop = () => {
         </div>
       </div>
 
-      {/* Mobile Navigation Menu — independently scrollable: the header is
-          sticky, so an uncapped menu would push items below the fold forever.
-          dvh keeps it usable with mobile browser chrome; vh is the fallback. */}
-      {isMobileMenuOpen && (
-        <div className="md:hidden border-t border-gray-200 bg-white py-4 max-h-[calc(100vh-4.5rem)] max-h-[calc(100dvh-4.5rem)] overflow-y-auto overscroll-contain">
-          <div className="container mx-auto px-4 flex flex-col space-y-3">
-            {STATIC_LINKS.map((link) => (
-              <Link
-                key={link.to}
-                to={link.to}
-                className={cn(
-                  "hover:text-primary font-medium py-2 flex items-center",
-                  isActive(link.to) ? "text-primary" : "text-gray-800"
-                )}
-              >
-                {link.live && (
-                  <span className="inline-flex h-2 w-2 bg-red-600 rounded-full mr-1.5 animate-pulse" />
-                )}
-                {link.label}
-              </Link>
-            ))}
-
-            {!isCategoriesLoading && categories.map((category) => (
-              <Link
-                key={category._id}
-                to={`/category/${category.slug}`}
-                className="text-gray-800 hover:text-primary font-medium py-2"
-              >
-                {category.name}
-              </Link>
-            ))}
-
-            <Link to="/contact" className="text-gray-800 hover:text-primary font-medium py-2">
-              Contact
-            </Link>
-
-            <CitySelector className="self-start" />
-          </div>
-        </div>
-      )}
     </div>
   );
 };

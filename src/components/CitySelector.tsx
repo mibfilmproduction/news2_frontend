@@ -28,11 +28,17 @@ export const getSelectedCity = (): string => {
  * Lists all states; the + button on a state expands its cities.
  * Clicking a city opens that city's articles directly.
  */
-const CitySelector: React.FC<{ className?: string }> = ({ className = "" }) => {
+const CitySelector: React.FC<{ className?: string; onOpenChange?: (open: boolean) => void }> = ({ className = "", onOpenChange }) => {
   const navigate = useNavigate();
   const { language } = useLanguage();
   const hindi = language === "hindi";
   const [open, setOpen] = useState(false);
+  // Notify parent (e.g. mobile sidebar) so it can close itself — the city
+  // sheet renders below the sidebar overlay, so both must not stay open.
+  const handleSheetOpenChange = (v: boolean) => {
+    setOpen(v);
+    onOpenChange?.(v);
+  };
   const [query, setQuery] = useState("");
   const [expanded, setExpanded] = useState<string | null>(null);
   const [selectedCity, setSelectedCity] = useState<string>(getSelectedCity);
@@ -84,7 +90,7 @@ const CitySelector: React.FC<{ className?: string }> = ({ className = "" }) => {
   };
 
   return (
-    <Sheet open={open} onOpenChange={setOpen}>
+    <Sheet open={open} onOpenChange={handleSheetOpenChange}>
       <SheetTrigger asChild>
         <button
           type="button"
