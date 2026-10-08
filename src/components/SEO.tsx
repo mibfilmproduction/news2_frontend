@@ -65,8 +65,18 @@ const SEO: React.FC<SEOProps> = ({
     ? image 
     : `${import.meta.env.VITE_SITE_URL || window.location.origin}${image}`;
     
-  // Current page URL
-  const pageUrl = url || window.location.href;
+  // Current page URL — strip query/hash so canonical never conflicts
+  // (Lighthouse: "Multiple conflicting URLs"). Always prefer www canonical.
+  const rawPageUrl = url || (typeof window !== 'undefined' ? window.location.href : '');
+  const pageUrl = (() => {
+    try {
+      const u = new URL(rawPageUrl, import.meta.env.VITE_SITE_URL || 'https://www.mibnews.in');
+      const siteOrigin = (import.meta.env.VITE_SITE_URL || 'https://www.mibnews.in').replace(/\/+$/, '');
+      return `${siteOrigin}${u.pathname}`;
+    } catch {
+      return rawPageUrl;
+    }
+  })();
   
   // Add language-specific suffix to title for SEO
   const languageSuffix = language === 'hindi' ? ' - हिंदी में समाचार' : ' - News in English';

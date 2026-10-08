@@ -1,18 +1,20 @@
-import React, { useState, useEffect } from 'react';
+import React, { Suspense, lazy, useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { api } from "@/lib/api-client";
-import { getImageUrl } from "@/lib/utils";
-import ShortPostsCarousel from "@/components/ShortPostsCarousel";
-import ReelsCarousel from "@/components/ReelsCarousel";
-import InstagramReels from "@/components/InstagramReels";
+import { getImageUrl, optimizeImageUrl } from "@/lib/utils";
 import { Separator } from "@/components/ui/separator";
-import AdvertisementDisplay from "@/components/AdvertisementDisplay";
 import SEO from "@/components/SEO";
 import { useLanguage } from "@/components/LanguageSwitcher";
+
+// Below-fold / heavy widgets load AFTER first paint — keeps LCP + TBT low
+const ShortPostsCarousel = lazy(() => import("@/components/ShortPostsCarousel"));
+const ReelsCarousel = lazy(() => import("@/components/ReelsCarousel"));
+const InstagramReels = lazy(() => import("@/components/InstagramReels"));
+const AdvertisementDisplay = lazy(() => import("@/components/AdvertisementDisplay"));
 
 interface Article {
   _id: string;
@@ -44,11 +46,11 @@ const HomePage = () => {
   const { language } = useLanguage();
 
   useEffect(() => {
-    // Fetch all articles
+    // Fetch latest articles only (limit keeps payload + LCP in check)
     const fetchArticles = async () => {
       try {
         setLoading(true);
-        const response = await api.get('/news');
+        const response = await api.get('/news', { limit: 12 });
 
         if (response.success && response.data) {
           setArticles(response.data);
@@ -75,8 +77,8 @@ const HomePage = () => {
           // For each category, fetch its articles
           const categoryData: { [key: string]: Article[] } = {};
 
-          for (const category of response.data) {
-            const articlesResponse = await api.get('/news', { category: category._id });
+          for (const category of response.data.slice(0, 6)) {
+            const articlesResponse = await api.get('/news', { category: category._id, limit: 5 });
 
             if (articlesResponse.success && articlesResponse.data) {
               categoryData[category._id] = articlesResponse.data;
@@ -155,9 +157,13 @@ const HomePage = () => {
               <Link to={`/article/${featuredCategoryArticle.slug}`}>
                 <div className="relative h-[400px]">
                   <img
-                    src={getImageUrl(featuredCategoryArticle.image)}
+                    src={optimizeImageUrl(getImageUrl(featuredCategoryArticle.image), 800)}
                     alt={featuredCategoryArticle.title}
-                    className="w-full h-full object-cover"
+                    loading="lazy"
+                    decoding="async"
+                    width={800}
+                    height={400}
+                    className="h-full w-full object-cover"
                   />
                   <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black to-transparent p-6">
                     <Badge variant="outline" className="bg-primary text-white mb-2">
@@ -185,8 +191,12 @@ const HomePage = () => {
                   <div className="flex flex-row items-center">
                     <div className="w-1/3">
                       <img
-                        src={getImageUrl(article.image)}
+                        src={optimizeImageUrl(getImageUrl(article.image), 300)}
                         alt={article.title}
+                        loading="lazy"
+                        decoding="async"
+                        width={300}
+                        height={80}
                         className="h-20 w-full object-cover"
                       />
                     </div>
@@ -211,11 +221,13 @@ const HomePage = () => {
             {/* Ad fills the leftover space under the related articles,
                 full-width at its own aspect ratio (never cropped). */}
             {squareAdSlot !== null && (
-              <AdvertisementDisplay
-                position="category-square"
-                slotIndex={squareAdSlot}
-                variant={squareAdSlot % 2 === 0 ? 'auto' : 'strip'}
-              />
+              <Suspense fallback={null}>
+                <AdvertisementDisplay
+                  position="category-square"
+                  slotIndex={squareAdSlot}
+                  variant={squareAdSlot % 2 === 0 ? 'auto' : 'strip'}
+                />
+              </Suspense>
             )}
           </div>
         </div>
@@ -278,7 +290,9 @@ const HomePage = () => {
       {/* Main Advertisement - Only one will be shown across the entire page */}
       <section className="-mt-1">
         <div className="mb-1 leading-none">
-          <AdvertisementDisplay position="header" onlyShowOne={true} />
+          <Suspense fallback={null}>
+            <AdvertisementDisplay position="header" onlyShowOne={true} />
+          </Suspense>
         </div>
 
         {/* Top Featured Articles */}
@@ -286,16 +300,20 @@ const HomePage = () => {
           {/* Featured Article */}
           {loading ? (
             <Card className="md:col-span-2 overflow-hidden">
-              <Skeleton className="h-[400px] w-full" />
+              <Skeleton className="h-[220px] w-full sm:h-[400px]" />
             </Card>
           ) : featuredArticle ? (
             <Card className="md:col-span-2 overflow-hidden">
               <Link to={`/article/${featuredArticle.slug}`}>
-                <div className="relative h-[400px]">
+                <div className="relative h-[220px] sm:h-[400px]">
                   <img
-                    src={getImageUrl(featuredArticle.image)}
+                    src={optimizeImageUrl(getImageUrl(featuredArticle.image), 800)}
                     alt={featuredArticle.title}
-                    className="w-full h-full object-cover"
+                    width={800}
+                    height={400}
+                    fetchPriority="high"
+                    decoding="async"
+                    className="h-full w-full object-cover"
                   />
                   <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black to-transparent p-6">
                     <Badge variant="outline" className="bg-primary text-white mb-2">
@@ -329,7 +347,9 @@ const HomePage = () => {
               secondaryArticles.length > 0 ? (
                 <>
                   {/* Ad on TOP, related article BELOW — same footprint (full column width x 180px) */}
-                  <AdvertisementDisplay position="home-hero-side" onlyShowOne={true} />
+                  <Suspense fallback={null}>
+                    <AdvertisementDisplay position="home-hero-side" onlyShowOne={true} />
+                  </Suspense>
 
                   {/* Only ONE related article below the ad */}
                   {secondaryArticles.slice(0, 1).map((article) => (
@@ -337,9 +357,13 @@ const HomePage = () => {
                       <Link to={`/article/${article.slug}`}>
                         <div className="relative h-[180px]">
                           <img
-                            src={getImageUrl(article.image)}
+                            src={optimizeImageUrl(getImageUrl(article.image), 400)}
                             alt={article.title}
-                            className="w-full h-full object-cover"
+                            loading="lazy"
+                            decoding="async"
+                            width={400}
+                            height={180}
+                            className="h-full w-full object-cover"
                           />
                           <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black to-transparent p-4">
                             <Badge variant="outline" className="bg-primary text-white mb-2">
@@ -369,18 +393,24 @@ const HomePage = () => {
         <div className="mt-1 space-y-1.5">
           <div className="w-full">
             {/* Featured Reels Section with Carousel */}
-            <div className="bg-white px-4 py-2 rounded-lg shadow-sm">
-              <ReelsCarousel featured={true} limit={6} />
+            <div className="bg-white px-4 py-2 rounded-lg shadow-sm min-h-[120px]">
+              <Suspense fallback={null}>
+                <ReelsCarousel featured={true} limit={6} />
+              </Suspense>
             </div>
 
             {/* Short Posts Section with Carousel */}
-            <div className="bg-white px-4 py-2 rounded-lg shadow-sm">
-              <ShortPostsCarousel limit={6} />
+            <div className="bg-white px-4 py-2 rounded-lg shadow-sm min-h-[120px]">
+              <Suspense fallback={null}>
+                <ShortPostsCarousel limit={6} />
+              </Suspense>
             </div>
 
             {/* Instagram Reels Section */}
-            <div className="bg-white px-4 py-2 rounded-lg shadow-sm">
-              <InstagramReels limit={6} />
+            <div className="bg-white px-4 py-2 rounded-lg shadow-sm min-h-[120px]">
+              <Suspense fallback={null}>
+                <InstagramReels limit={6} />
+              </Suspense>
             </div>
 
           </div>
@@ -425,9 +455,13 @@ const HomePage = () => {
                     <Link to={`/article/${article.slug}`}>
                       <div className="relative h-[200px]">
                         <img
-                          src={getImageUrl(article.image)}
+                          src={optimizeImageUrl(getImageUrl(article.image), 400)}
                           alt={article.title}
-                          className="w-full h-full object-cover"
+                          loading="lazy"
+                          decoding="async"
+                          width={400}
+                          height={200}
+                          className="h-full w-full object-cover"
                         />
                       </div>
                       <CardContent className="p-4">
@@ -470,9 +504,13 @@ const HomePage = () => {
                     <Link to={`/article/${article.slug}`}>
                       <div className="relative h-[200px]">
                         <img
-                          src={getImageUrl(article.image)}
+                          src={optimizeImageUrl(getImageUrl(article.image), 400)}
                           alt={article.title}
-                          className="w-full h-full object-cover"
+                          loading="lazy"
+                          decoding="async"
+                          width={400}
+                          height={200}
+                          className="h-full w-full object-cover"
                         />
                       </div>
                       <CardContent className="p-4">
@@ -515,9 +553,13 @@ const HomePage = () => {
                     <Link to={`/article/${article.slug}`}>
                       <div className="relative h-[200px]">
                         <img
-                          src={getImageUrl(article.image)}
+                          src={optimizeImageUrl(getImageUrl(article.image), 400)}
                           alt={article.title}
-                          className="w-full h-full object-cover"
+                          loading="lazy"
+                          decoding="async"
+                          width={400}
+                          height={200}
+                          className="h-full w-full object-cover"
                         />
                       </div>
                       <CardContent className="p-4">

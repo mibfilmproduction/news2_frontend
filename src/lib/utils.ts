@@ -6,6 +6,19 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 /**
+ * Optimize a Cloudinary URL with auto-format/auto-quality + width cap.
+ * Non-Cloudinary URLs pass through unchanged. (Est. savings ~411 KiB per
+ * Lighthouse "Improve image delivery".)
+ */
+export function optimizeImageUrl(url: string, width = 800): string {
+  if (!url || !url.includes('res.cloudinary.com')) return url;
+  if (url.includes('/upload/f_auto')) return url;
+  return url.replace('/upload/', `/upload/f_auto,q_auto,w_${width}/`);
+}
+
+/** Width/height attrs reserve layout space (CLS fix) + lazy below fold. */
+
+/**
  * Get the full URL for an image, supporting both Cloudinary and local storage
  * @param imagePath The path or URL of the image
  * @param fallbackImage Optional fallback image if the provided path is empty

@@ -37,17 +37,22 @@ export const initSentry = () => {
   }
 };
 
-// Utility function to log errors to Sentry
+// Utility function to log errors to Sentry (lazy — keeps @sentry/react out
+// of the initial bundle; BreakingNews is above the fold)
 export const logError = (error: Error, extras?: Record<string, any>) => {
   if (import.meta.env.PROD && import.meta.env.VITE_SENTRY_DSN) {
-    try {
-      Sentry.captureException(error, {
-        extra: extras,
-      });
-    } catch (sentryError) {
-      console.error('Failed to log error to Sentry:', sentryError);
-      console.error('Original error:', error, 'Extras:', extras);
-    }
+    import('@sentry/react').then((Sentry) => {
+      try {
+        Sentry.captureException(error, {
+          extra: extras,
+        });
+      } catch (sentryError) {
+        console.error('Failed to log error to Sentry:', sentryError);
+        console.error('Original error:', error, 'Extras:', extras);
+      }
+    }).catch(() => {
+      console.error('Error:', error, 'Extras:', extras);
+    });
   } else {
     console.error('Error:', error, 'Extras:', extras);
   }

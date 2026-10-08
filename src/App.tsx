@@ -4,13 +4,15 @@ import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from "r
 import { HelmetProvider } from 'react-helmet-async';
 import Layout from "./components/Layout";
 import ScrollToTop from "./components/ScrollToTop";
-import AdminLayout from "./components/admin/AdminLayout";
 import HomePage from "./pages/HomePage";
 import { AuthProvider } from "./hooks/useAuth.tsx";
 import { useAuth } from "./hooks/useAuth.tsx";
 import ProtectedRoute from "./components/ProtectedRoute";
 import ErrorBoundary from "./components/ErrorBoundary";
-import { WebVitalsTracker } from "./components/WebVitalsTracker";
+
+// Heavy / below-fold-only components load AFTER first paint (not in initial bundle)
+const AdminLayout = lazy(() => import("./components/admin/AdminLayout"));
+const WebVitalsTracker = lazy(() => import("./components/WebVitalsTracker").then((m) => ({ default: m.WebVitalsTracker })));
 
 // Lazy-loaded pages (code splitting - each page is a separate chunk)
 const Latest = lazy(() => import("./pages/Latest"));
@@ -164,7 +166,9 @@ function App() {
         <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
           <ScrollToTop /> {/* This ensures page scrolls to top on route change */}
           <AuthProvider>
-            <WebVitalsTracker />
+            <Suspense fallback={null}>
+              <WebVitalsTracker />
+            </Suspense>
             <AppRoutes />
           </AuthProvider>
         </Router>

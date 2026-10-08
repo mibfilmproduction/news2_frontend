@@ -22,7 +22,7 @@ const {language}=useLanguage();
 const hi=language==="hindi";
 useEffect(()=>{const h=()=>setOpen(true);window.addEventListener(OPEN_MOBILE_MENU_EVENT,h);return()=>window.removeEventListener(OPEN_MOBILE_MENU_EVENT,h);},[]);
 useEffect(()=>{setOpen(false);},[loc.pathname]);
-useEffect(()=>{if(!open)return;const p=document.body.style.overflow;document.body.style.overflow="hidden";const k=(e:KeyboardEvent)=>e.key==="Escape"&&setOpen(false);window.addEventListener("keydown",k);return()=>{document.body.style.overflow=p;window.removeEventListener("keydown",k);};},[open]);
+useEffect(()=>{const p=document.body.style.overflow;if(open){document.body.style.overflow="hidden";}const k=(e:KeyboardEvent)=>e.key==="Escape"&&setOpen(false);window.addEventListener("keydown",k);return()=>{document.body.style.overflow=p;window.removeEventListener("keydown",k);};},[open]);
 useEffect(()=>{if(!open)return;let a=true;getCategories({active:true,language}).then(c=>a&&setCats(c||[])).catch(()=>a&&setCats([]));return()=>{a=false;};},[open,language]);
 const isActive=useCallback((t:string)=>t==="/"?loc.pathname==="/":loc.pathname.startsWith(t),[loc.pathname]);
 const cl=(c:CategoryType)=>`/category/${c.slug||c._id}`;
@@ -39,13 +39,13 @@ const secs=[
 ];
 const goS=()=>{setOpen(false);nav(q.trim()?`/search?q=${encodeURIComponent(q.trim())}`:"/search");};
 const hits=qq?cats.filter(c=>c.name.toLowerCase().includes(qq)):[];
-return(<div className="md:hidden" aria-hidden={!open}>
+return(<div className="md:hidden" ref={(el) => { if (el) (el as HTMLElement).toggleAttribute('inert', !open); }}>
 <div onClick={()=>setOpen(false)} className={cn("fixed inset-0 z-[60] bg-black/55 transition-opacity duration-300",open?"opacity-100":"pointer-events-none opacity-0")}/>
 <aside role="dialog" aria-modal="true" aria-label={hi?"मेन्यू":"Menu"} style={{height:"100dvh"}} className={cn("fixed right-0 top-0 z-[61] flex h-full w-[84vw] max-w-[320px] flex-col overflow-hidden rounded-l-2xl bg-[#243A51] text-white shadow-2xl transition-transform duration-300 ease-out",open?"translate-x-0":"translate-x-full")}>
 <div className="shrink-0 bg-[#1D3046] px-4 pb-3 pt-3">
 <div className="flex items-center justify-between">
 <span className="flex items-center gap-1.5 text-[11px] font-semibold tracking-wider text-white/80"><span className="uppercase">{hi?"संस्करण":"Edition"}</span><span className="flex items-center gap-1 rounded-md bg-white/15 px-2 py-1 text-white">IN<ChevronDown className="h-3 w-3 text-white/70"/></span></span>
-<button onClick={()=>setOpen(false)} aria-label="Close" className="flex h-9 w-9 items-center justify-center rounded-full bg-white/15 text-white hover:bg-white/25 active:scale-95"><X className="h-5 w-5"/></button>
+<button onClick={()=>setOpen(false)} aria-label="Close menu" className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-full bg-white/15 text-white hover:bg-white/25 active:scale-95"><X className="h-5 w-5"/></button>
 </div>
 <Link to="/" onClick={()=>setOpen(false)} className="mt-2 inline-flex"><span className="rounded-lg bg-white px-2.5 py-1.5"><img src={logo} alt="Mibnews" className="h-7 w-auto"/></span></Link>
 <form onSubmit={(e)=>{e.preventDefault();goS();}} className="relative mt-3">

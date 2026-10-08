@@ -1,9 +1,23 @@
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 
 const CookieConsent = () => {
-  const [isVisible, setIsVisible] = useState(true);
+  const [isVisible, setIsVisible] = useState(false);
+
+  // Defer to post-paint so the banner never shifts LCP/CLS on load
+  useEffect(() => {
+    let stored = '';
+    try { stored = localStorage.getItem('cookie-consent') || ''; } catch { stored = ''; }
+    if (stored) return;
+    const t = window.setTimeout(() => setIsVisible(true), 2500);
+    return () => window.clearTimeout(t);
+  }, []);
+
+  const accept = () => {
+    try { localStorage.setItem('cookie-consent', 'accepted'); } catch { /* ignore */ }
+    setIsVisible(false);
+  };
 
   if (!isVisible) return null;
 
@@ -18,8 +32,9 @@ const CookieConsent = () => {
         <div className="flex-shrink-0">
           <Button 
             variant="default" 
-            onClick={() => setIsVisible(false)} 
-            className="bg-gray-900 hover:bg-gray-800 px-6"
+            onClick={accept}
+            aria-label="Accept cookies"
+            className="min-h-[44px] bg-gray-900 hover:bg-gray-800 px-6"
           >
             OK
           </Button>

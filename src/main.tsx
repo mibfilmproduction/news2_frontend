@@ -6,10 +6,11 @@ import "./index.css";
 import { Toaster } from "@/components/ui/toaster";
 import * as serviceWorkerRegistration from './serviceWorkerRegistration';
 import { QueryProvider } from "./lib/react-query";
-import { initSentry } from "./lib/sentry";
 
-// Initialize Sentry for error tracking in production
-initSentry();
+// Sentry loads AFTER first paint — never blocks FCP/LCP on the critical path
+if (import.meta.env.PROD && import.meta.env.VITE_SENTRY_DSN) {
+  import("./lib/sentry").then(({ initSentry }) => initSentry()).catch(() => {});
+}
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>

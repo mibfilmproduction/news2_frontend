@@ -137,7 +137,11 @@ const NavbarTop = () => {
           <Link to="/" className="flex h-full w-[120px]   shrink-0 items-center overflow-hidden py-2 my-0 leading-none">
             <img 
               src={logo} 
-              alt="Logo" 
+              alt="Mibnews - Latest Hindi and English News" 
+              width={120}
+              height={40}
+              fetchPriority="high"
+              decoding="async"
               className="block h-full w-full object-contain object-center p-0 m-0" 
             />
           </Link>
@@ -164,7 +168,8 @@ const NavbarTop = () => {
             <Button
               variant="ghost"
               size="icon"
-              className="md:hidden"
+              aria-label="Search articles"
+              className="min-h-[44px] min-w-[44px] md:hidden"
               onClick={() => setIsSearchOpen(!isSearchOpen)}
             >
               <Search className="h-5 w-5" />
@@ -209,7 +214,8 @@ const NavbarTop = () => {
             <Button
               variant="ghost"
               size="icon"
-              className="inline-flex md:hidden"
+              aria-label="Open menu"
+              className="inline-flex min-h-[44px] min-w-[44px] md:hidden"
               onClick={openMobileSideMenu}
             >
               <Menu className="h-5 w-5" />

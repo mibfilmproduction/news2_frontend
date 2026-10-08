@@ -147,13 +147,12 @@ const AdvertisementDisplay: React.FC<AdvertisementDisplayProps> = ({
   // was uploaded (backend never crops anymore). No max-width caps, no fixed
   // heights, no object-cover: h-auto + w-full means zero cropping/stretching.
   return (
-    <div
+    <aside
       className={`advertisement w-full mx-auto flex flex-col items-center ${className}`}
-      role="complementary"
       aria-label={`Advertisement: ${ad.title}`}
     >
       {/* Industry-standard micro label, like Google AdSense / real news sites */}
-      <span className="mb-1 text-center text-[10px] font-medium uppercase tracking-[0.25em] text-gray-400">
+      <span className="mb-1 text-center text-[10px] font-medium uppercase tracking-[0.25em] text-gray-500">
         Advertisement
       </span>
       <a
@@ -176,7 +175,7 @@ const AdvertisementDisplay: React.FC<AdvertisementDisplayProps> = ({
           }}
         />
       </a>
-    </div>
+    </aside>
   );
 };
 

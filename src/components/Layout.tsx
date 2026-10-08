@@ -151,10 +151,10 @@ const Layout = () => {
           <div className="grid grid-cols-1 gap-8 lg:grid-cols-5 lg:gap-10">
             {/* Brand + contact */}
             <div>
-              <Link to="/" className="inline-block rounded-xl bg-white px-4 py-2 shadow-lg">
-                <img src={logo} alt={`${siteTitle} logo`} className="h-12 w-auto" />
+              <Link to="/" aria-label="Mibnews - home" className="inline-block rounded-xl bg-white px-4 py-2 shadow-lg">
+                <img src={logo} alt={`${siteTitle} logo`} width={150} height={48} loading="lazy" decoding="async" className="h-12 w-auto" />
               </Link>
-              <p className="mt-4 text-sm leading-relaxed text-gray-400">{siteTagline}</p>
+              <p className="mt-4 text-sm leading-relaxed text-gray-300">{siteTagline}</p>
 
               <p className="mt-5 text-sm font-semibold text-white">Subscribe to newsletter</p>
               <form onSubmit={handleSubscribe} className="mt-3">
@@ -165,13 +165,13 @@ const Layout = () => {
                     onChange={(e) => setNewsletterEmail(e.target.value)}
                     placeholder="Your email address"
                     aria-label="Email address"
-                    className="w-full min-w-0 bg-transparent px-3 py-2.5 text-sm text-white placeholder:text-gray-500 focus:outline-none"
+                    className="w-full min-w-0 bg-transparent px-3 py-2.5 text-sm text-white placeholder:text-gray-400 focus:outline-none"
                   />
                   <button
                     type="submit"
                     disabled={nlState === 'loading'}
                     aria-label="Subscribe"
-                    className="flex shrink-0 items-center gap-1.5 bg-red-600 px-4 text-sm font-semibold text-white transition hover:bg-red-700 disabled:opacity-60"
+                    className="flex min-h-[48px] shrink-0 items-center gap-1.5 bg-red-600 px-4 text-sm font-semibold text-white transition hover:bg-red-700 disabled:opacity-60"
                   >
                     {nlState === 'loading' ? (
                       <Loader2 className="h-4 w-4 animate-spin" />
@@ -202,7 +202,7 @@ const Layout = () => {
                   <li key={link.to + link.label}>
                     <Link
                       to={link.to}
-                      className="group inline-flex items-center gap-1.5 text-gray-400 transition hover:text-white"
+                      className="group inline-flex min-h-[24px] items-center gap-1.5 text-gray-300 transition hover:text-white"
                     >
                       <ChevronRight className="h-3.5 w-3.5 text-red-600 transition-transform group-hover:translate-x-0.5" />
                       {link.label}
@@ -221,7 +221,7 @@ const Layout = () => {
                     <li key={cat._id || cat.slug || cat.name}>
                       <Link
                         to={`/category/${cat.slug || cat._id}`}
-                        className="group inline-flex items-center gap-1.5 text-gray-400 transition hover:text-white"
+                        className="group inline-flex min-h-[24px] items-center gap-1.5 text-gray-300 transition hover:text-white"
                       >
                         <ChevronRight className="h-3.5 w-3.5 text-red-600 transition-transform group-hover:translate-x-0.5" />
                         {cat.name}
@@ -250,7 +250,7 @@ const Layout = () => {
                   <li key={link.to + link.label}>
                     <Link
                       to={link.to}
-                      className="group inline-flex items-center gap-1.5 text-gray-400 transition hover:text-white"
+                      className="group inline-flex min-h-[24px] items-center gap-1.5 text-gray-300 transition hover:text-white"
                     >
                       <ChevronRight className="h-3.5 w-3.5 text-red-600 transition-transform group-hover:translate-x-0.5" />
                       {link.label}
@@ -280,7 +280,7 @@ const Layout = () => {
               </div>
 
               <p className="mt-6 text-sm font-semibold text-white">Contact Us</p>
-              <div className="mt-3 space-y-2.5 text-sm text-gray-400">
+              <div className="mt-3 space-y-2.5 text-sm text-gray-300">
                 <p className="flex items-start gap-2">
                   <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-red-500" />
                   <span>
@@ -311,7 +311,7 @@ const Layout = () => {
 
         {/* Bottom bar */}
         <div className="border-t border-white/10">
-          <div className="container mx-auto flex flex-col items-center justify-between gap-4 px-4 py-5 text-xs text-gray-500 md:flex-row">
+          <div className="container mx-auto flex flex-col items-center justify-between gap-4 px-4 py-5 text-xs text-gray-400 md:flex-row">
             <p>
               &copy; {new Date().getFullYear()} {siteTitle}. All Rights Reserved.
             </p>
