@@ -65,24 +65,41 @@ const HomePage = () => {
       }
     };
 
-    // Fetch all categories
+    // Fetch all categories + their articles dynamically
     const fetchCategories = async () => {
       try {
         setCategoriesLoading(true);
-        const response = await api.get('/categories');
+        const response = await api.get('/categories', { active: 'true' });
 
         if (response.success && response.data) {
-          setCategories(response.data);
+          // Only active categories, in backend sort order (sortOrder, name).
+          // Falls back to client-side filter in case backend ignores the param.
+          const allCategories: Category[] = (response.data as Category[]).filter(
+            (cat) => (cat as any)?.isActive !== false
+          );
+          setCategories(allCategories);
 
-          // For each category, fetch its articles
+          // Fetch articles for EVERY category in parallel (no slice limit),
+          // so newly added categories appear automatically.
+          // Individual failures resolve to [] so one bad category
+          // doesn't break the whole homepage.
+          const results: Array<[string, Article[]]> = await Promise.all(
+            allCategories.map(async (category): Promise<[string, Article[]]> => {
+              try {
+                const articlesResponse = await api.get('/news', { category: category._id, limit: 5 });
+                if (articlesResponse.success && Array.isArray(articlesResponse.data)) {
+                  return [category._id, articlesResponse.data as Article[]];
+                }
+              } catch (err) {
+                console.error(`Error fetching articles for category ${category._id}:`, err);
+              }
+              return [category._id, [] as Article[]];
+            })
+          );
+
           const categoryData: { [key: string]: Article[] } = {};
-
-          for (const category of response.data.slice(0, 6)) {
-            const articlesResponse = await api.get('/news', { category: category._id, limit: 5 });
-
-            if (articlesResponse.success && articlesResponse.data) {
-              categoryData[category._id] = articlesResponse.data;
-            }
+          for (const [categoryId, list] of results) {
+            categoryData[categoryId] = list;
           }
 
           setCategoryArticles(categoryData);
