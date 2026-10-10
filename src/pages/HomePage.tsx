@@ -15,6 +15,7 @@ const ShortPostsCarousel = lazy(() => import("@/components/ShortPostsCarousel"))
 const ReelsCarousel = lazy(() => import("@/components/ReelsCarousel"));
 const InstagramReels = lazy(() => import("@/components/InstagramReels"));
 const AdvertisementDisplay = lazy(() => import("@/components/AdvertisementDisplay"));
+const TopInfoSlider = lazy(() => import("@/components/TopInfoSlider"));
 
 interface Article {
   _id: string;
@@ -304,25 +305,25 @@ const HomePage = () => {
         breadcrumbs={[]}
       />
 
-      {/* Main Advertisement - Only one will be shown across the entire page */}
+      {/* Top hero layout: LEFT header-ad + banner | RIGHT slider + hero-ad + related */}
       <section className="-mt-1">
-        <div className="mb-1 leading-none">
-          <Suspense fallback={null}>
-            <AdvertisementDisplay position="header" onlyShowOne={true} />
-          </Suspense>
-        </div>
-
-        {/* Top Featured Articles */}
-        <div className="grid grid-cols-3 gap-2 sm:gap-6 items-stretch">
-          {/* Featured Article */}
+        <div className="grid grid-cols-1 items-start gap-2 sm:grid-cols-3 sm:items-stretch sm:gap-6">
+          {/* LEFT column: top header ad, then banner article below */}
+          <div className="flex min-w-0 flex-col gap-2 sm:col-span-2 sm:h-full sm:gap-3">
+            <div className="leading-none">
+              <Suspense fallback={null}>
+                <AdvertisementDisplay position="header" onlyShowOne={true} />
+              </Suspense>
+            </div>
+          {/* Featured Banner Article (height reduced 20%: 400px -> 320px) */}
           {loading ? (
-            <Card className="col-span-2 overflow-hidden">
-              <Skeleton className="h-[180px] w-full sm:h-[400px]" />
+            <Card className="overflow-hidden">
+              <Skeleton className="h-[145px] w-full sm:h-[320px]" />
             </Card>
           ) : featuredArticle ? (
-            <Card className="col-span-2 overflow-hidden flex flex-col">
+            <Card className="overflow-hidden flex flex-col sm:flex-1">
               <Link to={`/article/${featuredArticle.slug}`} className="flex flex-1 flex-col">
-                <div className="relative flex-1 min-h-[140px] sm:min-h-0 sm:h-[400px]">
+                <div className="relative flex-1 min-h-[112px] sm:min-h-[320px] sm:h-full">
                   <img
                     src={optimizeImageUrl(getImageUrl(featuredArticle.image), 800)}
                     alt={featuredArticle.title}
@@ -345,14 +346,19 @@ const HomePage = () => {
               </Link>
             </Card>
           ) : (
-            <Card className="col-span-2 overflow-hidden p-2 sm:p-6">
+            <Card className="overflow-hidden p-2 sm:p-6">
               <p className="text-xs sm:text-base">No articles found. Please check back later.</p>
             </Card>
           )}
+          </div>
 
-
-          {/* Secondary Articles + Home top-right Ad (same size as related card) */}
-          <div className="flex flex-col gap-1 sm:gap-2 sm:space-y-2 h-full">
+          {/* RIGHT column: 3 items sized to EQUAL left column (header-ad ~110 + gap 12 + banner 320 = ~442px) */}
+          <div className="flex min-w-0 flex-col gap-1 sm:h-full sm:gap-0 sm:space-y-0">
+            <div className="sm:h-[150px] sm:shrink-0">
+              <Suspense fallback={<div className="h-[140px] w-full animate-pulse rounded-md bg-gray-100 sm:h-[150px]" />}>
+                <TopInfoSlider />
+              </Suspense>
+            </div>
 
             {loading ? (
               [...Array(2)].map((_, i) => (
@@ -363,16 +369,17 @@ const HomePage = () => {
             ) :
               secondaryArticles.length > 0 ? (
                 <>
-                  {/* Ad on TOP, related article BELOW — same footprint (full column width x 180px) */}
-                  <Suspense fallback={null}>
-                    <AdvertisementDisplay position="home-hero-side" onlyShowOne={true} />
-                  </Suspense>
+                  {/* Hero ad — natural size, small gap from slider */}
+                  <div className="mt-1 sm:mt-[12px] sm:shrink-0">
+                    <Suspense fallback={null}>
+                      <AdvertisementDisplay position="home-hero-side" onlyShowOne={true} />
+                    </Suspense>
+                  </div>
 
-                  {/* Only ONE related article below the ad */}
                   {secondaryArticles.slice(0, 1).map((article) => (
-                    <Card key={article._id} className="overflow-hidden flex-1">
+                    <Card key={article._id} className="overflow-hidden sm:mt-[12px] sm:min-h-0 sm:flex-1">
                       <Link to={`/article/${article.slug}`} className="block h-full">
-                        <div className="relative h-full min-h-[90px] sm:min-h-0 sm:h-[180px]">
+                        <div className="relative h-full min-h-[90px] sm:h-full sm:min-h-[128px]">
                           <img
                             src={optimizeImageUrl(getImageUrl(article.image), 400)}
                             alt={article.title}
