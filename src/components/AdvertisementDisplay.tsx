@@ -92,9 +92,10 @@ const AdvertisementDisplay: React.FC<AdvertisementDisplayProps> = ({
   // Pick ONE stable ad per fetched list.
   // - Identical duplicates (same creative uploaded multiple times: same
   //   image + same target) collapse into ONE ad.
-  // - One ad shows only ONCE per page: if there are fewer ads than slots,
-  //   extra slots render nothing instead of repeating the same ad
-  //   (previously `slotIndex % length` repeated it in every slot).
+  // - Slots rotate in order: slot 0 -> 1st ad, slot 1 -> 2nd ad,
+  //   slot 2 -> 3rd ad, then cycle (3 ads, 4th slot -> 1st ad again).
+  //   So every slot shows a DIFFERENT ad until ads run out — no same
+  //   ad on back-to-back slots when enough unique ads exist.
   const ad = useMemo(() => {
     if (!advertisements || advertisements.length === 0) return null;
     const seen = new Set<string>();
@@ -104,8 +105,8 @@ const AdvertisementDisplay: React.FC<AdvertisementDisplayProps> = ({
       seen.add(key);
       return true;
     });
-    if (slotIndex >= uniqueAds.length) return null;
-    return uniqueAds[slotIndex];
+    if (uniqueAds.length === 0) return null;
+    return uniqueAds[((slotIndex % uniqueAds.length) + uniqueAds.length) % uniqueAds.length];
   }, [advertisements, slotIndex]);
 
   // Track impression exactly once per ad (StrictMode-safe).

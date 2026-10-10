@@ -130,6 +130,16 @@
     @apply bg-background text-foreground;
   }
 
+  /* Phone view = same desktop layout, just scaled down.
+     Home grids now stay 3-col on all screens; keep page padding tight
+     so columns don't squeeze too narrow on phones. */
+  @media (max-width: 767px) {
+    main > div.max-w-6xl {
+      padding-left: 0.375rem;
+      padding-right: 0.375rem;
+    }
+  }
+
   /* Inner pages render their own `.container` inside Layout's <main>, which
      doubles the side padding (esp. visible on phones) and stacks py-8 over
      the main padding. Neutralize the nested container so every page matches

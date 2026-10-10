@@ -159,20 +159,20 @@ const HomePage = () => {
     if (categoryArticleList.length === 0) return null;
 
     return (
-      <div className="py-1.5" key={categoryId}>
-        <div className="flex items-center justify-between mb-1.5">
-          <h2 className="text-2xl font-bold">{categoryName}</h2>
-          <Link to={`/category/${categorySlug || categoryId}`} className="text-primary hover:underline">
+      <div className="py-1 sm:py-1.5" key={categoryId}>
+        <div className="flex items-center justify-between mb-1 sm:mb-1.5">
+          <h2 className="text-base sm:text-2xl font-bold">{categoryName}</h2>
+          <Link to={`/category/${categorySlug || categoryId}`} className="text-primary hover:underline text-xs sm:text-base">
             View All
           </Link>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="grid grid-cols-3 gap-2 sm:gap-6 items-stretch">
           {/* Featured Category Article */}
           {featuredCategoryArticle ? (
-            <Card className="md:col-span-2 overflow-hidden">
-              <Link to={`/article/${featuredCategoryArticle.slug}`}>
-                <div className="relative h-[400px]">
+            <Card className="col-span-2 overflow-hidden flex flex-col">
+              <Link to={`/article/${featuredCategoryArticle.slug}`} className="flex flex-1 flex-col">
+                <div className="relative flex-1 min-h-[140px] sm:min-h-0 sm:h-[400px]">
                   <img
                     src={optimizeImageUrl(getImageUrl(featuredCategoryArticle.image), 800)}
                     alt={featuredCategoryArticle.title}
@@ -182,31 +182,31 @@ const HomePage = () => {
                     height={400}
                     className="h-full w-full object-cover"
                   />
-                  <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black to-transparent p-6">
-                    <Badge variant="outline" className="bg-primary text-white mb-2">
+                  <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black to-transparent p-2 sm:p-6">
+                    <Badge variant="outline" className="bg-primary text-white mb-1 sm:mb-2 text-[10px] sm:text-sm">
                       {categoryName}
                     </Badge>
-                    <h3 className="text-xl md:text-2xl font-bold text-white mb-2">
+                    <h3 className="text-xs sm:text-xl md:text-2xl font-bold text-white mb-1 sm:mb-2 line-clamp-3">
                       {featuredCategoryArticle.title}
                     </h3>
-                    <p className="text-gray-200 text-sm">{formatTimeAgo(featuredCategoryArticle.createdAt)}</p>
+                    <p className="text-gray-200 text-[10px] sm:text-sm">{formatTimeAgo(featuredCategoryArticle.createdAt)}</p>
                   </div>
                 </div>
               </Link>
             </Card>
           ) : (
-            <Card className="md:col-span-2 overflow-hidden">
-              <Skeleton className="h-[400px] w-full" />
+            <Card className="col-span-2 overflow-hidden">
+              <Skeleton className="h-[180px] sm:h-[400px] w-full" />
             </Card>
           )}
 
           {/* Related Articles */}
-          <div className="space-y-2">
+          <div className="flex flex-col gap-1 sm:gap-2 sm:space-y-2 h-full">
             {relatedArticles.length > 0 ? (
               relatedArticles.map(article => (
-                <Card key={article._id} className="overflow-hidden">
-                  <div className="flex flex-row items-center">
-                    <div className="w-1/3">
+                <Card key={article._id} className="overflow-hidden flex-1">
+                  <div className="flex flex-row items-center h-full">
+                    <div className="w-1/3 h-full">
                       <img
                         src={optimizeImageUrl(getImageUrl(article.image), 300)}
                         alt={article.title}
@@ -214,16 +214,16 @@ const HomePage = () => {
                         decoding="async"
                         width={300}
                         height={80}
-                        className="h-20 w-full object-cover"
+                        className="h-full min-h-[44px] sm:h-20 sm:min-h-0 w-full object-cover"
                       />
                     </div>
-                    <CardContent className="p-2.5 w-2/3">
-                      <h4 className="font-medium text-[13px] leading-snug mb-1 line-clamp-2">
+                    <CardContent className="p-1.5 sm:p-2.5 w-2/3">
+                      <h4 className="font-medium text-[10px] sm:text-[13px] leading-snug mb-0.5 sm:mb-1 line-clamp-2">
                         <Link to={`/article/${article.slug}`} className="hover:text-primary transition-colors">
                           {article.title}
                         </Link>
                       </h4>
-                      <p className="text-gray-500 text-xs">{formatTimeAgo(article.createdAt)}</p>
+                      <p className="text-gray-500 text-[9px] sm:text-xs">{formatTimeAgo(article.createdAt)}</p>
                     </CardContent>
                   </div>
                 </Card>
@@ -313,16 +313,16 @@ const HomePage = () => {
         </div>
 
         {/* Top Featured Articles */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="grid grid-cols-3 gap-2 sm:gap-6 items-stretch">
           {/* Featured Article */}
           {loading ? (
-            <Card className="md:col-span-2 overflow-hidden">
-              <Skeleton className="h-[220px] w-full sm:h-[400px]" />
+            <Card className="col-span-2 overflow-hidden">
+              <Skeleton className="h-[180px] w-full sm:h-[400px]" />
             </Card>
           ) : featuredArticle ? (
-            <Card className="md:col-span-2 overflow-hidden">
-              <Link to={`/article/${featuredArticle.slug}`}>
-                <div className="relative h-[220px] sm:h-[400px]">
+            <Card className="col-span-2 overflow-hidden flex flex-col">
+              <Link to={`/article/${featuredArticle.slug}`} className="flex flex-1 flex-col">
+                <div className="relative flex-1 min-h-[140px] sm:min-h-0 sm:h-[400px]">
                   <img
                     src={optimizeImageUrl(getImageUrl(featuredArticle.image), 800)}
                     alt={featuredArticle.title}
@@ -332,27 +332,27 @@ const HomePage = () => {
                     decoding="async"
                     className="h-full w-full object-cover"
                   />
-                  <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black to-transparent p-6">
-                    <Badge variant="outline" className="bg-primary text-white mb-2">
+                  <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black to-transparent p-2 sm:p-6">
+                    <Badge variant="outline" className="bg-primary text-white mb-1 sm:mb-2 text-[10px] sm:text-sm">
                       {getCategoryName(featuredArticle.category)}
                     </Badge>
-                    <h2 className="text-xl md:text-3xl font-bold text-white mb-2">
+                    <h2 className="text-xs sm:text-xl md:text-3xl font-bold text-white mb-1 sm:mb-2 line-clamp-3">
                       {featuredArticle.title}
                     </h2>
-                    <p className="text-gray-200 text-sm">{formatTimeAgo(featuredArticle.createdAt)}</p>
+                    <p className="text-gray-200 text-[10px] sm:text-sm">{formatTimeAgo(featuredArticle.createdAt)}</p>
                   </div>
                 </div>
               </Link>
             </Card>
           ) : (
-            <Card className="md:col-span-2 overflow-hidden p-6">
-              <p>No articles found. Please check back later.</p>
+            <Card className="col-span-2 overflow-hidden p-2 sm:p-6">
+              <p className="text-xs sm:text-base">No articles found. Please check back later.</p>
             </Card>
           )}
 
 
           {/* Secondary Articles + Home top-right Ad (same size as related card) */}
-          <div className="space-y-2">
+          <div className="flex flex-col gap-1 sm:gap-2 sm:space-y-2 h-full">
 
             {loading ? (
               [...Array(2)].map((_, i) => (
@@ -370,9 +370,9 @@ const HomePage = () => {
 
                   {/* Only ONE related article below the ad */}
                   {secondaryArticles.slice(0, 1).map((article) => (
-                    <Card key={article._id} className="overflow-hidden">
-                      <Link to={`/article/${article.slug}`}>
-                        <div className="relative h-[180px]">
+                    <Card key={article._id} className="overflow-hidden flex-1">
+                      <Link to={`/article/${article.slug}`} className="block h-full">
+                        <div className="relative h-full min-h-[90px] sm:min-h-0 sm:h-[180px]">
                           <img
                             src={optimizeImageUrl(getImageUrl(article.image), 400)}
                             alt={article.title}
@@ -382,14 +382,14 @@ const HomePage = () => {
                             height={180}
                             className="h-full w-full object-cover"
                           />
-                          <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black to-transparent p-4">
-                            <Badge variant="outline" className="bg-primary text-white mb-2">
+                          <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black to-transparent p-1.5 sm:p-4">
+                            <Badge variant="outline" className="bg-primary text-white mb-0.5 sm:mb-2 text-[9px] sm:text-sm">
                               {getCategoryName(article.category)}
                             </Badge>
-                            <h3 className="text-sm md:text-base font-bold text-white mb-1">
+                            <h3 className="text-[10px] sm:text-sm md:text-base font-bold text-white mb-0.5 sm:mb-1 line-clamp-2">
                               {article.title}
                             </h3>
-                            <p className="text-gray-200 text-xs">{formatTimeAgo(article.createdAt)}</p>
+                            <p className="text-gray-200 text-[9px] sm:text-xs">{formatTimeAgo(article.createdAt)}</p>
                           </div>
                         </div>
                       </Link>
@@ -410,21 +410,21 @@ const HomePage = () => {
         <div className="mt-1 space-y-1.5">
           <div className="w-full">
             {/* Featured Reels Section with Carousel */}
-            <div className="bg-white px-4 py-2 rounded-lg shadow-sm min-h-[120px]">
+            <div className="bg-white px-4 py-2 rounded-[2px] shadow-sm min-h-[120px]">
               <Suspense fallback={null}>
                 <ReelsCarousel featured={true} limit={6} />
               </Suspense>
             </div>
 
             {/* Short Posts Section with Carousel */}
-            <div className="bg-white px-4 py-2 rounded-lg shadow-sm min-h-[120px]">
+            <div className="bg-white px-4 py-2 rounded-[2px] shadow-sm min-h-[120px]">
               <Suspense fallback={null}>
                 <ShortPostsCarousel limit={6} />
               </Suspense>
             </div>
 
             {/* Instagram Reels Section */}
-            <div className="bg-white px-4 py-2 rounded-lg shadow-sm min-h-[120px]">
+            <div className="bg-white px-4 py-2 rounded-[2px] shadow-sm min-h-[120px]">
               <Suspense fallback={null}>
                 <InstagramReels limit={6} />
               </Suspense>
@@ -435,7 +435,9 @@ const HomePage = () => {
 
         {/* Category Header Advertisement */}
         <div className="my-1">
-          <AdvertisementDisplay position="category-header" onlyShowOne={true} />
+          <Suspense fallback={null}>
+            <AdvertisementDisplay position="category-header" onlyShowOne={true} />
+          </Suspense>
         </div>
 
         {/* News Tabs */}
@@ -454,12 +456,12 @@ const HomePage = () => {
           </TabsList>
 
           <TabsContent value="latest" className="mt-0">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="grid grid-cols-3 gap-2 sm:gap-6">
               {loading ? (
                 [...Array(3)].map((_, i) => (
                   <Card key={i} className="overflow-hidden">
-                    <Skeleton className="h-[200px] w-full" />
-                    <CardContent className="p-4">
+                    <Skeleton className="h-20 sm:h-[200px] w-full" />
+                    <CardContent className="p-1.5 sm:p-4">
                       <Skeleton className="h-4 w-20 mb-2" />
                       <Skeleton className="h-5 w-full mb-2" />
                       <Skeleton className="h-4 w-24" />
@@ -470,7 +472,7 @@ const HomePage = () => {
                 regularArticles.map((article) => (
                   <Card key={article._id} className="overflow-hidden">
                     <Link to={`/article/${article.slug}`}>
-                      <div className="relative h-[200px]">
+                      <div className="relative h-20 sm:h-[200px]">
                         <img
                           src={optimizeImageUrl(getImageUrl(article.image), 400)}
                           alt={article.title}
@@ -481,33 +483,33 @@ const HomePage = () => {
                           className="h-full w-full object-cover"
                         />
                       </div>
-                      <CardContent className="p-4">
-                        <Badge variant="outline" className="bg-primary text-white mb-2">
+                      <CardContent className="p-1.5 sm:p-4">
+                        <Badge variant="outline" className="bg-primary text-white mb-1 sm:mb-2 text-[9px] sm:text-xs">
                           {getCategoryName(article.category)}
                         </Badge>
-                        <h3 className="font-semibold mb-2">
+                        <h3 className="font-semibold mb-1 sm:mb-2 text-[10px] sm:text-base leading-snug line-clamp-2">
                           {article.title}
                         </h3>
-                        <p className="text-gray-500 text-sm">{formatTimeAgo(article.createdAt)}</p>
+                        <p className="text-gray-500 text-[9px] sm:text-sm">{formatTimeAgo(article.createdAt)}</p>
                       </CardContent>
                     </Link>
                   </Card>
                 ))
               ) : (
                 <div className="col-span-3 text-center py-2">
-                  <p>No articles found. Please check back later.</p>
+                  <p className="text-xs sm:text-base">No articles found. Please check back later.</p>
                 </div>
               )}
             </div>
           </TabsContent>
 
           <TabsContent value="trending" className="mt-0">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="grid grid-cols-3 gap-2 sm:gap-6">
               {loading ? (
                 [...Array(3)].map((_, i) => (
                   <Card key={i} className="overflow-hidden">
-                    <Skeleton className="h-[200px] w-full" />
-                    <CardContent className="p-4">
+                    <Skeleton className="h-20 sm:h-[200px] w-full" />
+                    <CardContent className="p-1.5 sm:p-4">
                       <Skeleton className="h-4 w-20 mb-2" />
                       <Skeleton className="h-5 w-full mb-2" />
                       <Skeleton className="h-4 w-24" />
@@ -519,7 +521,7 @@ const HomePage = () => {
                 articles.slice(2, 5).map((article) => (
                   <Card key={article._id} className="overflow-hidden">
                     <Link to={`/article/${article.slug}`}>
-                      <div className="relative h-[200px]">
+                      <div className="relative h-20 sm:h-[200px]">
                         <img
                           src={optimizeImageUrl(getImageUrl(article.image), 400)}
                           alt={article.title}
@@ -530,33 +532,33 @@ const HomePage = () => {
                           className="h-full w-full object-cover"
                         />
                       </div>
-                      <CardContent className="p-4">
-                        <Badge variant="outline" className="bg-primary text-white mb-2">
+                      <CardContent className="p-1.5 sm:p-4">
+                        <Badge variant="outline" className="bg-primary text-white mb-1 sm:mb-2 text-[9px] sm:text-xs">
                           {getCategoryName(article.category)}
                         </Badge>
-                        <h3 className="font-semibold mb-2">
+                        <h3 className="font-semibold mb-1 sm:mb-2 text-[10px] sm:text-base leading-snug line-clamp-2">
                           {article.title}
                         </h3>
-                        <p className="text-gray-500 text-sm">{formatTimeAgo(article.createdAt)}</p>
+                        <p className="text-gray-500 text-[9px] sm:text-sm">{formatTimeAgo(article.createdAt)}</p>
                       </CardContent>
                     </Link>
                   </Card>
                 ))
               ) : (
                 <div className="col-span-3 text-center py-2">
-                  <p>No trending articles found. Please check back later.</p>
+                  <p className="text-xs sm:text-base">No trending articles found. Please check back later.</p>
                 </div>
               )}
             </div>
           </TabsContent>
 
           <TabsContent value="popular" className="mt-0">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="grid grid-cols-3 gap-2 sm:gap-6">
               {loading ? (
                 [...Array(3)].map((_, i) => (
                   <Card key={i} className="overflow-hidden">
-                    <Skeleton className="h-[200px] w-full" />
-                    <CardContent className="p-4">
+                    <Skeleton className="h-20 sm:h-[200px] w-full" />
+                    <CardContent className="p-1.5 sm:p-4">
                       <Skeleton className="h-4 w-20 mb-2" />
                       <Skeleton className="h-5 w-full mb-2" />
                       <Skeleton className="h-4 w-24" />
@@ -568,7 +570,7 @@ const HomePage = () => {
                 articles.slice(0, 3).map((article) => (
                   <Card key={article._id} className="overflow-hidden">
                     <Link to={`/article/${article.slug}`}>
-                      <div className="relative h-[200px]">
+                      <div className="relative h-20 sm:h-[200px]">
                         <img
                           src={optimizeImageUrl(getImageUrl(article.image), 400)}
                           alt={article.title}
@@ -579,21 +581,21 @@ const HomePage = () => {
                           className="h-full w-full object-cover"
                         />
                       </div>
-                      <CardContent className="p-4">
-                        <Badge variant="outline" className="bg-primary text-white mb-2">
+                      <CardContent className="p-1.5 sm:p-4">
+                        <Badge variant="outline" className="bg-primary text-white mb-1 sm:mb-2 text-[9px] sm:text-xs">
                           {getCategoryName(article.category)}
                         </Badge>
-                        <h3 className="font-semibold mb-2">
+                        <h3 className="font-semibold mb-1 sm:mb-2 text-[10px] sm:text-base leading-snug line-clamp-2">
                           {article.title}
                         </h3>
-                        <p className="text-gray-500 text-sm">{formatTimeAgo(article.createdAt)}</p>
+                        <p className="text-gray-500 text-[9px] sm:text-sm">{formatTimeAgo(article.createdAt)}</p>
                       </CardContent>
                     </Link>
                   </Card>
                 ))
               ) : (
                 <div className="col-span-3 text-center py-2">
-                  <p>No popular articles found. Please check back later.</p>
+                  <p className="text-xs sm:text-base">No popular articles found. Please check back later.</p>
                 </div>
               )}
             </div>
@@ -604,14 +606,14 @@ const HomePage = () => {
 
       {/* Category Articles Sections */}
       <div className="mt-1.5">
-        <h2 className="text-2xl font-bold mb-1">Categories</h2>
+        <h2 className="text-base sm:text-2xl font-bold mb-1">Categories</h2>
         {categoriesLoading ? (
           <div className="space-y-1.5">
             {[1, 2, 3].map(i => (
               <div key={i} className="py-1">
                 <Skeleton className="h-8 w-48 mb-1" />
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  <Skeleton className="h-[400px] md:col-span-2" />
+                <div className="grid grid-cols-3 gap-2 sm:gap-6">
+                  <Skeleton className="h-[180px] sm:h-[400px] col-span-2" />
                   <div className="space-y-4">
                     <Skeleton className="h-24" />
                     <Skeleton className="h-24" />
@@ -640,11 +642,13 @@ const HomePage = () => {
                   {/* Insert advertisement after every category section */}
                   {index % 2 === 1 && (
                     <div className="my-1">
-                      <AdvertisementDisplay
-                        position="in-article"
-                        onlyShowOne={true}
-                        slotIndex={Math.floor(index / 2)}
-                      />
+                      <Suspense fallback={null}>
+                        <AdvertisementDisplay
+                          position="in-article"
+                          onlyShowOne={true}
+                          slotIndex={Math.floor(index / 2)}
+                        />
+                      </Suspense>
                     </div>
                   )}
                   <Separator className="my-1" />
@@ -661,7 +665,9 @@ const HomePage = () => {
 
       {/* Footer Advertisement */}
       <div className="mt-1.5 mb-1">
-        <AdvertisementDisplay position="footer" onlyShowOne={true} />
+        <Suspense fallback={null}>
+          <AdvertisementDisplay position="footer" onlyShowOne={true} />
+        </Suspense>
       </div>
 
     </div>
